@@ -10,7 +10,13 @@ INSERT INTO organizations (id, name, description, logo_url, website_url, contact
 INSERT INTO organizations (id, name, description, website) VALUES
 ('550e8400-e29b-41d4-a716-446655440000', 'Gutenberg Foundation', 'Promoting literacy and education worldwide', 'https://gutenberg.org'),
 ('550e8400-e29b-41d4-a716-446655440001', 'Local Community Center', 'Supporting local community development', 'https://community.org'),
-('550e8400-e29b-41d4-a716-446655440002', 'Youth Development Initiative', 'Empowering young people through education', 'https://youth.org');
+('550e8400-e29b-41d4-a716-446655440002', 'Youth Development Initiative', 'Empowering young people through education', 'https://youth.org'),
+('550e8400-e29b-41d4-a716-446655440000', 'Global Impact Foundation', 'A worldwide organization focused on sustainable development and community empowerment.', 'https://globalimpact.org'),
+('550e8400-e29b-41d4-a716-446655440001', 'Tech for Good Alliance', 'Leveraging technology to solve social and environmental challenges.', 'https://techforgood.org'),
+('550e8400-e29b-41d4-a716-446655440002', 'Community Builders Network', 'Building stronger communities through volunteer engagement and local initiatives.', 'https://communitybuilders.org'),
+('550e8400-e29b-41d4-a716-446655440003', 'Education First Initiative', 'Promoting quality education and literacy programs worldwide.', 'https://educationfirst.org'),
+('550e8400-e29b-41d4-a716-446655440004', 'Environmental Action Group', 'Protecting our planet through conservation and sustainability projects.', 'https://enviroaction.org')
+ON CONFLICT (id) DO NOTHING;
 
 -- Insert sample netzwerk cities
 INSERT INTO netzwerk_cities (id, name, country, region, is_active) VALUES
@@ -122,6 +128,13 @@ INSERT INTO cities (id, name, country, region) VALUES
 ('660e8400-e29b-41d4-a716-446655440002', 'Toronto', 'Canada', 'North America'),
 ('660e8400-e29b-41d4-a716-446655440003', 'Sydney', 'Australia', 'Oceania'),
 ('660e8400-e29b-41d4-a716-446655440004', 'Berlin', 'Germany', 'Europe');
+INSERT INTO cities (id, name, country, state_province) VALUES
+('550e8400-e29b-41d4-a716-446655440010', 'New York', 'United States', 'New York'),
+('550e8400-e29b-41d4-a716-446655440011', 'Los Angeles', 'United States', 'California'),
+('550e8400-e29b-41d4-a716-446655440012', 'Chicago', 'United States', 'Illinois'),
+('550e8400-e29b-41d4-a716-446655440013', 'Toronto', 'Canada', 'Ontario'),
+('550e8400-e29b-41d4-a716-446655440014', 'London', 'United Kingdom', 'England')
+ON CONFLICT (id) DO NOTHING;
 
 -- Insert sample projects
 INSERT INTO projects (
@@ -147,7 +160,13 @@ INSERT INTO projects (id, organization_id, title, description, status, priority,
 INSERT INTO projects (id, title, description, organization_id, city_id, status, priority, start_date, end_date, required_skills, max_volunteers) VALUES
 ('770e8400-e29b-41d4-a716-446655440000', 'Digital Library Initiative', 'Creating a comprehensive digital library for underserved communities', '550e8400-e29b-41d4-a716-446655440000', '660e8400-e29b-41d4-a716-446655440000', 'active', 'high', '2024-01-15', '2024-12-31', ARRAY['Web Development', 'Content Management', 'Digital Archiving'], 15),
 ('770e8400-e29b-41d4-a716-446655440001', 'Community Reading Program', 'Organizing reading sessions for children in local schools', '550e8400-e29b-41d4-a716-446655440001', '660e8400-e29b-41d4-a716-446655440001', 'active', 'medium', '2024-02-01', '2024-06-30', ARRAY['Teaching', 'Child Care', 'Public Speaking'], 25),
-('770e8400-e29b-41d4-a716-446655440002', 'Youth Mentorship Network', 'Connecting young people with professional mentors', '550e8400-e29b-41d4-a716-446655440002', '660e8400-e29b-41d4-a716-446655440002', 'active', 'high', '2024-03-01', '2024-11-30', ARRAY['Mentoring', 'Career Guidance', 'Communication'], 30);
+('770e8400-e29b-41d4-a716-446655440002', 'Youth Mentorship Network', 'Connecting young people with professional mentors', '550e8400-e29b-41d4-a716-446655440002', '660e8400-e29b-41d4-a716-446655440002', 'active', 'high', '2024-03-01', '2024-11-30', ARRAY['Mentoring', 'Career Guidance', 'Communication'], 30),
+('550e8400-e29b-41d4-a716-446655440020', 'Clean Water Initiative', 'Providing clean water access to rural communities through well construction and water purification systems.', '550e8400-e29b-41d4-a716-446655440000', 'c3d4e5f6-a7b8-9012-3456-7890abcdef01', 'active', 'high', '2024-01-15', '2024-12-31', ARRAY['Engineering', 'Project Management', 'Community Outreach'], 25),
+('550e8400-e29b-41d4-a716-446655440021', 'Digital Literacy Program', 'Teaching basic computer skills and internet safety to seniors and underserved communities.', '550e8400-e29b-41d4-a716-446655440001', 'active', 'medium', '2024-02-01', '2024-11-30', ARRAY['Teaching', 'Computer Skills', 'Patience'], 15),
+('550e8400-e29b-41d4-a716-446655440022', 'Urban Garden Project', 'Creating community gardens in urban areas to promote food security and environmental awareness.', '550e8400-e29b-41d4-a716-446655440002', 'active', 'medium', '2024-03-01', '2024-10-31', ARRAY['Gardening', 'Community Organizing', 'Environmental Science'], 20),
+('550e8400-e29b-41d4-a716-446655440023', 'Youth Mentorship Program', 'Connecting adult volunteers with at-risk youth to provide guidance and support.', '550e8400-e29b-41d4-a716-446655440003', 'active', 'high', '2024-01-01', '2024-12-31', ARRAY['Mentoring', 'Communication', 'Youth Development'], 30),
+('550e8400-e29b-41d4-a716-446655440024', 'Renewable Energy Workshop', 'Educational workshops on solar panel installation and renewable energy systems.', '550e8400-e29b-41d4-a716-446655440004', 'f6a7b8c9-d0e1-2345-6789-0abcdef01234', 'on_hold', 'low', '2024-06-01', '2024-09-30', ARRAY['Electrical Work', 'Teaching', 'Renewable Energy'], 10)
+ON CONFLICT (id) DO NOTHING;
 
 -- Insert sample courses
 INSERT INTO courses (
@@ -168,7 +187,13 @@ INSERT INTO courses (id, organization_id, title, description, category, level, d
 INSERT INTO courses (id, title, description, organization_id, category, level, duration_hours, max_participants, start_date, end_date, is_published) VALUES
 ('880e8400-e29b-41d4-a716-446655440000', 'Volunteer Leadership Training', 'Comprehensive training program for volunteer leaders', '550e8400-e29b-41d4-a716-446655440000', 'Leadership', 'intermediate', 40, 20, '2024-04-01', '2024-05-31', true),
 ('880e8400-e29b-41d4-a716-446655440001', 'Digital Literacy for Seniors', 'Teaching basic computer skills to elderly community members', '550e8400-e29b-41d4-a716-446655440001', 'Technology', 'beginner', 20, 15, '2024-03-15', '2024-04-15', true),
-('880e8400-e29b-41d4-a716-446655440002', 'Grant Writing Workshop', 'Learn how to write effective grant proposals for non-profits', '550e8400-e29b-41d4-a716-446655440002', 'Fundraising', 'advanced', 16, 12, '2024-05-01', '2024-05-31', true);
+('880e8400-e29b-41d4-a716-446655440002', 'Grant Writing Workshop', 'Learn how to write effective grant proposals for non-profits', '550e8400-e29b-41d4-a716-446655440002', 'Fundraising', 'advanced', 16, 12, '2024-05-01', '2024-05-31', true),
+('550e8400-e29b-41d4-a716-446655440030', 'Volunteer Leadership Fundamentals', 'Learn the essential skills needed to lead volunteer teams effectively.', 'Dr. Sarah Johnson', 8, 'beginner', 'Leadership', 'published'),
+('550e8400-e29b-41d4-a716-446655440031', 'Project Management for Nonprofits', 'Master project management techniques specifically designed for nonprofit organizations.', 'Michael Chen', 12, 'intermediate', 'Management', 'published'),
+('550e8400-e29b-41d4-a716-446655440032', 'Community Engagement Strategies', 'Discover effective methods for engaging and mobilizing community members.', 'Dr. Maria Rodriguez', 6, 'beginner', 'Community', 'published'),
+('550e8400-e29b-41d4-a716-446655440033', 'Grant Writing Workshop', 'Learn how to write compelling grant proposals to secure funding for your projects.', 'James Wilson', 10, 'intermediate', 'Fundraising', 'published'),
+('550e8400-e29b-41d4-a716-446655440034', 'Digital Marketing for Social Impact', 'Harness the power of digital marketing to amplify your organization\'s mission.', 'Lisa Thompson', 14, 'advanced', 'Marketing', 'published')
+ON CONFLICT (id) DO NOTHING;
 
 -- Insert sample community posts
 INSERT INTO community_posts (id, title, content, organization_id, city_id, category, tags) VALUES
@@ -191,7 +216,13 @@ INSERT INTO community_posts (id, organization_id, author_id, title, content, cat
 INSERT INTO community_posts (id, title, content, organization_id, category, tags) VALUES
 ('990e8400-e29b-41d4-a716-446655440000', 'Welcome to Our Community!', 'We are excited to have you join our volunteer community. This platform will help us coordinate our efforts and share resources.', '550e8400-e29b-41d4-a716-446655440000', 'Announcements', ARRAY['welcome', 'community', 'introduction']),
 ('990e8400-e29b-41d4-a716-446655440001', 'Upcoming Training Sessions', 'We have several training sessions scheduled for next month. Please check the Learning Center for more details and to register.', '550e8400-e29b-41d4-a716-446655440000', 'Training', ARRAY['training', 'education', 'skills']),
-('990e8400-e29b-41d4-a716-446655440002', 'Volunteer Appreciation Event', 'Join us for our annual volunteer appreciation dinner on June 15th. Details and RSVP information will be sent via email.', '550e8400-e29b-41d4-a716-446655440001', 'Events', ARRAY['appreciation', 'event', 'celebration']);
+('990e8400-e29b-41d4-a716-446655440002', 'Volunteer Appreciation Event', 'Join us for our annual volunteer appreciation dinner on June 15th. Details and RSVP information will be sent via email.', '550e8400-e29b-41d4-a716-446655440001', 'Events', ARRAY['appreciation', 'event', 'celebration']),
+('550e8400-e29b-41d4-a716-446655440040', 'Welcome to Our Community!', 'We''re excited to have you join our volunteer community. This is a space where we can share experiences, ask questions, and support each other in our mission to make a positive impact. Feel free to introduce yourself and let us know what causes you''re passionate about!', '550e8400-e29b-41d4-a716-446655440000', 'General', ARRAY['welcome', 'introduction', 'community'], 15, 8, 'published'),
+('550e8400-e29b-41d4-a716-446655440041', 'Tips for First-Time Volunteers', 'Starting your volunteer journey can be both exciting and overwhelming. Here are some tips to help you get started: 1) Choose causes you''re passionate about, 2) Start small and gradually increase your commitment, 3) Don''t be afraid to ask questions, 4) Be reliable and communicate well, 5) Celebrate your impact, no matter how small!', '550e8400-e29b-41d4-a716-446655440000', 'Tips', ARRAY['tips', 'beginners', 'advice'], 23, 12, 'published'),
+('550e8400-e29b-41d4-a716-446655440042', 'Upcoming Environmental Cleanup Event', 'Join us for a community cleanup event at Riverside Park this Saturday from 9 AM to 2 PM. We''ll be removing litter, planting native species, and maintaining walking trails. Lunch will be provided! Please bring work gloves and wear comfortable clothes. RSVP in the comments below.', '550e8400-e29b-41d4-a716-446655440000', 'Events', ARRAY['environment', 'cleanup', 'event'], 31, 18, 'published'),
+('550e8400-e29b-41d4-a716-446655440043', 'Volunteer Spotlight: Making a Difference in Education', 'This month, we''re highlighting the amazing work being done by our education volunteers. From tutoring students to organizing book drives, these dedicated individuals are helping to bridge the education gap in our community. Read about their inspiring stories and learn how you can get involved in education initiatives.', '550e8400-e29b-41d4-a716-446655440000', 'Spotlight', ARRAY['spotlight', 'education', 'inspiration'], 19, 6, 'published'),
+('550e8400-e29b-41d4-a716-446655440044', 'Fundraising Ideas for Small Nonprofits', 'Running a successful fundraising campaign doesn''t always require a big budget. Here are some creative and cost-effective fundraising ideas: community bake sales, online crowdfunding campaigns, skill-based auctions, corporate partnerships, and social media challenges. What fundraising strategies have worked for your organization?', '550e8400-e29b-41d4-a716-446655440000', 'Discussion', ARRAY['fundraising', 'nonprofit', 'ideas'], 27, 14, 'published')
+ON CONFLICT (id) DO NOTHING;
 
 -- Insert sample project assignments
 INSERT INTO project_assignments (

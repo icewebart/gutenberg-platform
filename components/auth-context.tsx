@@ -18,7 +18,7 @@ interface Profile {
   updated_at: string
 }
 
-interface AuthContextType {
+type AuthContextType = {
   user: User | null
   profile: Profile | null
   loading: boolean
@@ -26,7 +26,13 @@ interface AuthContextType {
   signInWithDemo: (role: "admin" | "manager" | "volunteer") => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  profile: null,
+  loading: true,
+  signOut: async () => {},
+  signInWithDemo: async (role: "admin" | "manager" | "volunteer") => {},
+})
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -35,17 +41,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchProfile(session.user.id)
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      setUser(user)
+      if (user) {
+        fetchProfile(user.id)
       } else {
         setLoading(false)
       }
-    })
+    }
 
-    // Listen for auth changes
+    getUser()
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -59,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [supabase.auth])
 
   async function fetchProfile(userId: string) {
     try {

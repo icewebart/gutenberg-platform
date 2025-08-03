@@ -17,30 +17,28 @@ CREATE TABLE IF NOT EXISTS cities (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(255) NOT NULL,
   country VARCHAR(255) NOT NULL,
-  region VARCHAR(255),
+  state_province VARCHAR(255),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create profiles table
+-- Create user profiles table
 CREATE TABLE IF NOT EXISTS profiles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  email VARCHAR(255) NOT NULL,
-  first_name VARCHAR(255) NOT NULL,
-  last_name VARCHAR(255) NOT NULL,
-  role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'manager', 'coordinator', 'volunteer')),
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  first_name VARCHAR(255),
+  last_name VARCHAR(255),
+  full_name VARCHAR(255),
+  role VARCHAR(50) DEFAULT 'volunteer' CHECK (role IN ('admin', 'manager', 'volunteer')),
   organization_id UUID REFERENCES organizations(id),
   city_id UUID REFERENCES cities(id),
-  phone VARCHAR(50),
-  bio TEXT,
   skills TEXT[],
-  availability JSONB,
-  points INTEGER DEFAULT 0,
+  bio TEXT,
+  phone VARCHAR(20),
   avatar_url VARCHAR(255),
-  is_active BOOLEAN DEFAULT true,
+  points INTEGER DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'pending')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(user_id)
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Create projects table
@@ -49,26 +47,26 @@ CREATE TABLE IF NOT EXISTS projects (
   title VARCHAR(255) NOT NULL,
   description TEXT,
   organization_id UUID REFERENCES organizations(id),
-  city_id UUID REFERENCES cities(id),
-  status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'completed', 'paused', 'cancelled')),
-  priority VARCHAR(50) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'completed', 'on_hold', 'cancelled')),
+  priority VARCHAR(10) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
   start_date DATE,
   end_date DATE,
   required_skills TEXT[],
+  volunteer_count INTEGER DEFAULT 0,
   max_volunteers INTEGER,
-  current_volunteers INTEGER DEFAULT 0,
   created_by UUID REFERENCES profiles(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create project_volunteers table (many-to-many relationship)
-CREATE TABLE IF NOT EXISTS project_volunteers (
+-- Create project assignments table
+CREATE TABLE IF NOT EXISTS project_assignments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   volunteer_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  role VARCHAR(255),
-  joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  role VARCHAR(100),
+  assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'completed', 'withdrawn')),
   UNIQUE(project_id, volunteer_id)
 );
 
@@ -81,8 +79,8 @@ CREATE TABLE IF NOT EXISTS activities (
   description TEXT,
   hours DECIMAL(5,2),
   date DATE NOT NULL,
-  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
-  points_awarded INTEGER DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'completed' CHECK (status IN ('completed', 'pending', 'approved')),
+  points_earned INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -92,48 +90,44 @@ CREATE TABLE IF NOT EXISTS courses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title VARCHAR(255) NOT NULL,
   description TEXT,
-  organization_id UUID REFERENCES organizations(id),
-  instructor_id UUID REFERENCES profiles(id),
-  category VARCHAR(100),
-  level VARCHAR(50) CHECK (level IN ('beginner', 'intermediate', 'advanced')),
+  instructor VARCHAR(255),
   duration_hours INTEGER,
-  max_participants INTEGER,
-  current_participants INTEGER DEFAULT 0,
-  start_date DATE,
-  end_date DATE,
-  is_published BOOLEAN DEFAULT false,
+  difficulty VARCHAR(20) DEFAULT 'beginner' CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')),
+  category VARCHAR(100),
+  thumbnail_url VARCHAR(255),
+  status VARCHAR(20) DEFAULT 'published' CHECK (status IN ('draft', 'published', 'archived')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create course_enrollments table
+-- Create course enrollments table
 CREATE TABLE IF NOT EXISTS course_enrollments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
-  student_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   enrolled_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   completed_at TIMESTAMP WITH TIME ZONE,
   progress INTEGER DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
-  UNIQUE(course_id, student_id)
+  status VARCHAR(20) DEFAULT 'enrolled' CHECK (status IN ('enrolled', 'completed', 'dropped')),
+  UNIQUE(course_id, user_id)
 );
 
--- Create community_posts table
+-- Create community posts table
 CREATE TABLE IF NOT EXISTS community_posts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title VARCHAR(255) NOT NULL,
   content TEXT NOT NULL,
   author_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  organization_id UUID REFERENCES organizations(id),
   category VARCHAR(100),
   tags TEXT[],
   likes_count INTEGER DEFAULT 0,
   comments_count INTEGER DEFAULT 0,
-  is_pinned BOOLEAN DEFAULT false,
+  status VARCHAR(20) DEFAULT 'published' CHECK (status IN ('draft', 'published', 'archived')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create post_comments table
+-- Create post comments table
 CREATE TABLE IF NOT EXISTS post_comments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   post_id UUID REFERENCES community_posts(id) ON DELETE CASCADE,
@@ -144,7 +138,7 @@ CREATE TABLE IF NOT EXISTS post_comments (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create post_likes table
+-- Create post likes table
 CREATE TABLE IF NOT EXISTS post_likes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   post_id UUID REFERENCES community_posts(id) ON DELETE CASCADE,
@@ -153,20 +147,19 @@ CREATE TABLE IF NOT EXISTS post_likes (
   UNIQUE(post_id, user_id)
 );
 
--- Create chat_conversations table
+-- Create chat conversations table
 CREATE TABLE IF NOT EXISTS chat_conversations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title VARCHAR(255),
-  type VARCHAR(50) DEFAULT 'direct' CHECK (type IN ('direct', 'group', 'project')),
-  organization_id UUID REFERENCES organizations(id),
+  type VARCHAR(20) DEFAULT 'direct' CHECK (type IN ('direct', 'group', 'project')),
   project_id UUID REFERENCES projects(id),
   created_by UUID REFERENCES profiles(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create conversation_participants table
-CREATE TABLE IF NOT EXISTS conversation_participants (
+-- Create chat participants table
+CREATE TABLE IF NOT EXISTS chat_participants (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   conversation_id UUID REFERENCES chat_conversations(id) ON DELETE CASCADE,
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -175,37 +168,36 @@ CREATE TABLE IF NOT EXISTS conversation_participants (
   UNIQUE(conversation_id, user_id)
 );
 
--- Create chat_messages table
+-- Create chat messages table
 CREATE TABLE IF NOT EXISTS chat_messages (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   conversation_id UUID REFERENCES chat_conversations(id) ON DELETE CASCADE,
   sender_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
-  message_type VARCHAR(50) DEFAULT 'text' CHECK (message_type IN ('text', 'image', 'file', 'system')),
-  file_url VARCHAR(255),
+  message_type VARCHAR(20) DEFAULT 'text' CHECK (message_type IN ('text', 'image', 'file', 'system')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
-CREATE INDEX IF NOT EXISTS idx_profiles_organization_id ON profiles(organization_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_organization ON profiles(organization_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_role ON profiles(role);
-CREATE INDEX IF NOT EXISTS idx_projects_organization_id ON projects(organization_id);
+CREATE INDEX IF NOT EXISTS idx_projects_organization ON projects(organization_id);
 CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
-CREATE INDEX IF NOT EXISTS idx_activities_volunteer_id ON activities(volunteer_id);
-CREATE INDEX IF NOT EXISTS idx_activities_project_id ON activities(project_id);
+CREATE INDEX IF NOT EXISTS idx_activities_volunteer ON activities(volunteer_id);
+CREATE INDEX IF NOT EXISTS idx_activities_project ON activities(project_id);
 CREATE INDEX IF NOT EXISTS idx_activities_date ON activities(date);
-CREATE INDEX IF NOT EXISTS idx_courses_organization_id ON courses(organization_id);
-CREATE INDEX IF NOT EXISTS idx_community_posts_author_id ON community_posts(author_id);
-CREATE INDEX IF NOT EXISTS idx_community_posts_organization_id ON community_posts(organization_id);
-CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_id ON chat_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_community_posts_author ON community_posts(author_id);
+CREATE INDEX IF NOT EXISTS idx_community_posts_category ON community_posts(category);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation ON chat_messages(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at);
 
 -- Enable Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE project_volunteers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE course_enrollments ENABLE ROW LEVEL SECURITY;
@@ -213,95 +205,57 @@ ALTER TABLE community_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE post_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE post_likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_conversations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE conversation_participants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chat_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_messages ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for profiles
-CREATE POLICY "Users can view profiles in their organization" ON profiles
-  FOR SELECT USING (
-    organization_id IN (
-      SELECT organization_id FROM profiles WHERE user_id = auth.uid()
-    )
-  );
+-- Create RLS policies
+-- Profiles policies
+CREATE POLICY "Users can view all profiles" ON profiles FOR SELECT USING (true);
+CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
-CREATE POLICY "Users can update their own profile" ON profiles
-  FOR UPDATE USING (user_id = auth.uid());
+-- Organizations policies
+CREATE POLICY "Anyone can view organizations" ON organizations FOR SELECT USING (true);
 
-CREATE POLICY "Users can insert their own profile" ON profiles
-  FOR INSERT WITH CHECK (user_id = auth.uid());
+-- Cities policies
+CREATE POLICY "Anyone can view cities" ON cities FOR SELECT USING (true);
 
--- RLS Policies for projects
-CREATE POLICY "Users can view projects in their organization" ON projects
-  FOR SELECT USING (
-    organization_id IN (
-      SELECT organization_id FROM profiles WHERE user_id = auth.uid()
-    )
-  );
+-- Projects policies
+CREATE POLICY "Anyone can view projects" ON projects FOR SELECT USING (true);
+CREATE POLICY "Authenticated users can create projects" ON projects FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Project creators and admins can update projects" ON projects FOR UPDATE USING (
+  auth.uid() = created_by OR 
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
 
-CREATE POLICY "Managers and admins can manage projects" ON projects
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM profiles 
-      WHERE user_id = auth.uid() 
-      AND role IN ('admin', 'manager')
-      AND organization_id = projects.organization_id
-    )
-  );
+-- Activities policies
+CREATE POLICY "Users can view activities" ON activities FOR SELECT USING (true);
+CREATE POLICY "Users can create activities" ON activities FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Users can update own activities" ON activities FOR UPDATE USING (
+  auth.uid() = volunteer_id OR 
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'manager'))
+);
 
--- RLS Policies for activities
-CREATE POLICY "Users can view their own activities" ON activities
-  FOR SELECT USING (
-    volunteer_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
-  );
+-- Courses policies
+CREATE POLICY "Anyone can view published courses" ON courses FOR SELECT USING (status = 'published');
+CREATE POLICY "Admins can manage courses" ON courses FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
 
-CREATE POLICY "Users can insert their own activities" ON activities
-  FOR INSERT WITH CHECK (
-    volunteer_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
-  );
+-- Community posts policies
+CREATE POLICY "Anyone can view published posts" ON community_posts FOR SELECT USING (status = 'published');
+CREATE POLICY "Authenticated users can create posts" ON community_posts FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Authors can update own posts" ON community_posts FOR UPDATE USING (auth.uid() = author_id);
 
-CREATE POLICY "Managers can view all activities in their organization" ON activities
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM profiles p1
-      JOIN profiles p2 ON p1.organization_id = p2.organization_id
-      WHERE p1.user_id = auth.uid() 
-      AND p1.role IN ('admin', 'manager')
-      AND p2.id = activities.volunteer_id
-    )
-  );
+-- Chat policies
+CREATE POLICY "Users can view conversations they participate in" ON chat_conversations FOR SELECT USING (
+  EXISTS (SELECT 1 FROM chat_participants WHERE conversation_id = id AND user_id = auth.uid())
+);
 
--- RLS Policies for community posts
-CREATE POLICY "Users can view posts in their organization" ON community_posts
-  FOR SELECT USING (
-    organization_id IN (
-      SELECT organization_id FROM profiles WHERE user_id = auth.uid()
-    )
-  );
+CREATE POLICY "Users can view messages in their conversations" ON chat_messages FOR SELECT USING (
+  EXISTS (SELECT 1 FROM chat_participants WHERE conversation_id = chat_messages.conversation_id AND user_id = auth.uid())
+);
 
-CREATE POLICY "Users can create posts" ON community_posts
-  FOR INSERT WITH CHECK (
-    author_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
-  );
-
-CREATE POLICY "Users can update their own posts" ON community_posts
-  FOR UPDATE USING (
-    author_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
-  );
-
--- RLS Policies for chat messages
-CREATE POLICY "Users can view messages in conversations they participate in" ON chat_messages
-  FOR SELECT USING (
-    conversation_id IN (
-      SELECT conversation_id FROM conversation_participants 
-      WHERE user_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
-    )
-  );
-
-CREATE POLICY "Users can send messages to conversations they participate in" ON chat_messages
-  FOR INSERT WITH CHECK (
-    sender_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
-    AND conversation_id IN (
-      SELECT conversation_id FROM conversation_participants 
-      WHERE user_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
-    )
-  );
+CREATE POLICY "Users can send messages to their conversations" ON chat_messages FOR INSERT WITH CHECK (
+  EXISTS (SELECT 1 FROM chat_participants WHERE conversation_id = chat_messages.conversation_id AND user_id = auth.uid())
+);

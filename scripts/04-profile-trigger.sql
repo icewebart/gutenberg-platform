@@ -1,65 +1,31 @@
--- Create function to handle new user registration
+-- Create function to handle new user profile creation
 CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  org_id UUID;
-  city_id UUID;
-  user_role TEXT;
-  first_name TEXT;
-  last_name TEXT;
-  name_parts TEXT[];
+RETURNS TRIGGER AS $$
 BEGIN
-  -- Get default organization and city
-  SELECT id INTO org_id FROM organizations LIMIT 1;
-  SELECT id INTO city_id FROM cities LIMIT 1;
-  
-  -- Set default role
-  user_role := COALESCE(NEW.raw_user_meta_data->>'role', 'volunteer');
-  
-  -- Extract names from metadata or email
-  IF NEW.raw_user_meta_data->>'full_name' IS NOT NULL THEN
-    name_parts := string_to_array(NEW.raw_user_meta_data->>'full_name', ' ');
-    first_name := name_parts[1];
-    last_name := COALESCE(name_parts[2], '');
-  ELSIF NEW.raw_user_meta_data->>'first_name' IS NOT NULL THEN
-    first_name := NEW.raw_user_meta_data->>'first_name';
-    last_name := COALESCE(NEW.raw_user_meta_data->>'last_name', '');
-  ELSE
-    -- Extract from email
-    name_parts := string_to_array(split_part(NEW.email, '@', 1), '.');
-    first_name := COALESCE(name_parts[1], 'User');
-    last_name := COALESCE(name_parts[2], '');
-  END IF;
-  
-  -- Insert profile
   INSERT INTO profiles (
-    user_id,
+    id,
     email,
+    full_name,
     first_name,
     last_name,
     role,
     organization_id,
-    city_id,
-    is_active
+    city_id
   ) VALUES (
     NEW.id,
     NEW.email,
-    first_name,
-    last_name,
-    user_role,
-    org_id,
-    city_id,
-    true
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
+    COALESCE(NEW.raw_user_meta_data->>'first_name', SPLIT_PART(COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email), ' ', 1)),
+    COALESCE(NEW.raw_user_meta_data->>'last_name', SPLIT_PART(COALESCE(NEW.raw_user_meta_data->>'full_name', ''), ' ', 2)),
+    COALESCE(NEW.raw_user_meta_data->>'role', 'volunteer'),
+    COALESCE((NEW.raw_user_meta_data->>'organization_id')::UUID, '550e8400-e29b-41d4-a716-446655440000'),
+    COALESCE((NEW.raw_user_meta_data->>'city_id')::UUID, '550e8400-e29b-41d4-a716-446655440010')
   );
-  
   RETURN NEW;
 END;
-$$;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create trigger for new user registration
+-- Create trigger for new user profile creation
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
