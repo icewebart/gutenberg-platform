@@ -1,24 +1,54 @@
-import { TabInterface } from "./tab-interface"
-import { StoreInterface } from "./store/store-interface"
+"use client"
 
-const GutenbergCRM = () => {
-  const renderContent = (tab: string) => {
-    switch (tab) {
-      case "home":
-        return <div>Home Tab Content</div>
+import { useState } from "react"
+import { DashboardLayout } from "./dashboard-layout"
+import { DashboardOverview } from "./dashboard-overview"
+import { ProjectsManagement } from "./projects/projects-management"
+import { CommunityForum } from "./community/community-forum"
+import { LearningCenter } from "./learning/learning-center"
+import { VolunteersManagement } from "./volunteers/volunteers-management"
+import { StoreInterface } from "./store/store-interface"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ChatLayout } from "./chat/chat-layout"
+
+export function GutenbergCRM() {
+  const [activeTab, setActiveTab] = useState("dashboard")
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "dashboard":
+        return <DashboardOverview />
+      case "projects":
+        return <ProjectsManagement />
+      case "volunteers":
+        return <VolunteersManagement />
+      case "community":
+        return <CommunityForum />
+      case "learning":
+        return <LearningCenter />
       case "store":
         return <StoreInterface />
+      case "chat":
+        return <ChatLayout />
+      case "settings":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Settings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>Settings (Coming Soon)</p>
+            </CardContent>
+          </Card>
+        )
       default:
-        return <div>Default Tab Content</div>
+        return <DashboardOverview />
     }
   }
 
   return (
-    <div>
-      <TabInterface />
-      {renderContent("store")}
-    </div>
+    <DashboardLayout activeTab={activeTab} onTabChange={setActiveTab}>
+      {renderContent()}
+    </DashboardLayout>
   )
 }
-
-export default GutenbergCRM

@@ -1,14 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { Star, ShoppingCart, Heart, Share2, Minus, Plus, Truck, Shield, RotateCcw } from "lucide-react"
+import { X, ShoppingCart, Heart, Star, Minus, Plus, Truck, Shield, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { StoreProduct } from "@/types/store"
-import { productReviews } from "@/data/store-data"
 
 interface ProductDetailModalProps {
   product: StoreProduct | null
@@ -18,7 +17,7 @@ interface ProductDetailModalProps {
 }
 
 export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: ProductDetailModalProps) {
-  const [selectedImage, setSelectedImage] = useState(0)
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [isWishlisted, setIsWishlisted] = useState(false)
 
@@ -28,11 +27,14 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0
 
-  const productReviewsForProduct = productReviews.filter((r) => r.productId === product.id)
-
   const handleAddToCart = () => {
     onAddToCart(product.id, quantity)
     onClose()
+  }
+
+  const handleQuantityChange = (delta: number) => {
+    const newQuantity = Math.max(1, Math.min(product.stockQuantity, quantity + delta))
+    setQuantity(newQuantity)
   }
 
   return (
@@ -40,28 +42,29 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="sr-only">{product.name}</DialogTitle>
-          <DialogDescription className="sr-only">Product details for {product.name}</DialogDescription>
+          <Button variant="ghost" size="icon" className="absolute right-4 top-4 z-10" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Product Images */}
           <div className="space-y-4">
-            <div className="aspect-square overflow-hidden rounded-lg bg-gray-100">
+            <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
               <img
-                src={product.images[selectedImage] || "/placeholder.svg"}
+                src={product.images[selectedImageIndex] || "/placeholder.svg"}
                 alt={product.name}
-                className="h-full w-full object-cover"
+                className="w-full h-full object-cover"
               />
             </div>
-
             {product.images.length > 1 && (
               <div className="flex gap-2 overflow-x-auto">
                 {product.images.map((image, index) => (
                   <button
                     key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
-                      selectedImage === index ? "border-blue-500" : "border-gray-200"
+                    onClick={() => setSelectedImageIndex(index)}
+                    className={`flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border-2 ${
+                      selectedImageIndex === index ? "border-blue-500" : "border-gray-200"
                     }`}
                   >
                     <img
@@ -77,26 +80,23 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
 
           {/* Product Info */}
           <div className="space-y-6">
+            {/* Header */}
             <div>
               <div className="flex items-start justify-between mb-2">
                 <h1 className="text-2xl font-bold">{product.name}</h1>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="icon" onClick={() => setIsWishlisted(!isWishlisted)}>
-                    <Heart className={`h-4 w-4 ${isWishlisted ? "fill-red-500 text-red-500" : ""}`} />
-                  </Button>
-                  <Button variant="outline" size="icon">
-                    <Share2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Button variant="ghost" size="icon" onClick={() => setIsWishlisted(!isWishlisted)}>
+                  <Heart className={`h-5 w-5 ${isWishlisted ? "fill-red-500 text-red-500" : ""}`} />
+                </Button>
               </div>
 
+              {/* Rating */}
               <div className="flex items-center gap-2 mb-3">
                 <div className="flex items-center">
                   {[...Array(5)].map((_, i) => (
                     <Star
                       key={i}
                       className={`h-4 w-4 ${
-                        i < Math.floor(product.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                        i < Math.floor(product.rating) ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
                       }`}
                     />
                   ))}
@@ -106,144 +106,164 @@ export function ProductDetailModal({ product, isOpen, onClose, onAddToCart }: Pr
                 </span>
               </div>
 
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl font-bold text-blue-600">€{product.price.toFixed(2)}</span>
-                {product.originalPrice && (
-                  <>
-                    <span className="text-xl text-gray-500 line-through">€{product.originalPrice.toFixed(2)}</span>
-                    <Badge className="bg-red-500 text-white">-{discountPercentage}% OFF</Badge>
-                  </>
-                )}
-              </div>
-
-              <div className="flex gap-2 mb-4">
-                <Badge variant={product.inStock ? "default" : "secondary"}>
-                  {product.inStock ? `In Stock (${product.stockQuantity})` : "Out of Stock"}
-                </Badge>
-                {product.isDigital && <Badge variant="outline">Digital Product</Badge>}
+              {/* Badges */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {discountPercentage > 0 && <Badge variant="destructive">-{discountPercentage}% OFF</Badge>}
+                {product.isDigital && <Badge variant="secondary">Digital Product</Badge>}
                 <Badge variant="outline">{product.category}</Badge>
               </div>
+            </div>
 
-              <p className="text-gray-600 mb-6">{product.description}</p>
+            {/* Price */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl font-bold text-green-600">€{product.price.toFixed(2)}</span>
+                {product.originalPrice && (
+                  <span className="text-lg text-gray-500 line-through">€{product.originalPrice.toFixed(2)}</span>
+                )}
+              </div>
+              {product.price >= 25 && (
+                <p className="text-sm text-green-600 flex items-center gap-1">
+                  <Truck className="h-4 w-4" />
+                  Free shipping on orders over €25
+                </p>
+              )}
+            </div>
+
+            {/* Stock Status */}
+            <div className="space-y-2">
+              {product.inStock ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-sm text-green-600">
+                    {product.stockQuantity < 10 ? `Only ${product.stockQuantity} left in stock` : "In Stock"}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <span className="text-sm text-red-600">Out of Stock</span>
+                </div>
+              )}
             </div>
 
             {/* Quantity and Add to Cart */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <span className="font-medium">Quantity:</span>
-                <div className="flex items-center border rounded-lg">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    disabled={quantity <= 1}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <span className="px-4 py-2 min-w-[3rem] text-center">{quantity}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setQuantity(quantity + 1)}
-                    disabled={quantity >= product.stockQuantity}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+            {product.inStock && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <label className="text-sm font-medium">Quantity:</label>
+                  <div className="flex items-center border rounded-md">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleQuantityChange(-1)}
+                      disabled={quantity <= 1}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <span className="px-3 py-1 text-sm font-medium min-w-[3rem] text-center">{quantity}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleQuantityChange(1)}
+                      disabled={quantity >= product.stockQuantity}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
 
-              <Button className="w-full" size="lg" onClick={handleAddToCart} disabled={!product.inStock}>
-                <ShoppingCart className="h-5 w-5 mr-2" />
-                Add to Cart - €{(product.price * quantity).toFixed(2)}
-              </Button>
-            </div>
+                <Button onClick={handleAddToCart} className="w-full" size="lg">
+                  <ShoppingCart className="h-5 w-5 mr-2" />
+                  Add to Cart - €{(product.price * quantity).toFixed(2)}
+                </Button>
+              </div>
+            )}
 
             {/* Features */}
             <div className="grid grid-cols-3 gap-4 py-4 border-t border-b">
               <div className="text-center">
                 <Truck className="h-6 w-6 mx-auto mb-2 text-blue-600" />
                 <p className="text-xs text-gray-600">Free Shipping</p>
+                <p className="text-xs text-gray-500">Orders over €25</p>
               </div>
               <div className="text-center">
                 <Shield className="h-6 w-6 mx-auto mb-2 text-green-600" />
                 <p className="text-xs text-gray-600">Secure Payment</p>
+                <p className="text-xs text-gray-500">SSL Protected</p>
               </div>
               <div className="text-center">
-                <RotateCcw className="h-6 w-6 mx-auto mb-2 text-purple-600" />
+                <RotateCcw className="h-6 w-6 mx-auto mb-2 text-orange-600" />
                 <p className="text-xs text-gray-600">30-Day Returns</p>
+                <p className="text-xs text-gray-500">Easy returns</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Product Details Tabs */}
-        <Tabs defaultValue="specifications" className="mt-6">
+        <Tabs defaultValue="description" className="mt-6">
           <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="description">Description</TabsTrigger>
             <TabsTrigger value="specifications">Specifications</TabsTrigger>
-            <TabsTrigger value="reviews">Reviews ({productReviewsForProduct.length})</TabsTrigger>
-            <TabsTrigger value="shipping">Shipping & Returns</TabsTrigger>
+            <TabsTrigger value="reviews">Reviews ({product.reviewCount})</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="description" className="mt-4">
+            <div className="prose max-w-none">
+              <p className="text-gray-700 leading-relaxed">{product.description}</p>
+
+              {/* Tags */}
+              <div className="mt-4">
+                <h4 className="font-medium mb-2">Tags:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {product.tags.map((tag) => (
+                    <Badge key={tag} variant="outline" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
           <TabsContent value="specifications" className="mt-4">
-            <div className="space-y-3">
-              {product.specifications &&
-                Object.entries(product.specifications).map(([key, value]) => (
+            {product.specifications ? (
+              <div className="space-y-3">
+                {Object.entries(product.specifications).map(([key, value]) => (
                   <div key={key} className="flex justify-between py-2 border-b border-gray-100">
                     <span className="font-medium text-gray-700">{key}:</span>
                     <span className="text-gray-600">{value}</span>
                   </div>
                 ))}
-            </div>
+              </div>
+            ) : (
+              <p className="text-gray-600">No specifications available.</p>
+            )}
           </TabsContent>
 
           <TabsContent value="reviews" className="mt-4">
             <div className="space-y-4">
-              {productReviewsForProduct.length > 0 ? (
-                productReviewsForProduct.map((review) => (
-                  <div key={review.id} className="border-b border-gray-100 pb-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex items-center">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-4 w-4 ${
-                              i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <span className="text-sm text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    <p className="text-gray-700">{review.comment}</p>
+              <div className="flex items-center gap-4">
+                <div className="text-3xl font-bold">{product.rating}</div>
+                <div>
+                  <div className="flex items-center mb-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`h-4 w-4 ${
+                          i < Math.floor(product.rating) ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
+                        }`}
+                      />
+                    ))}
                   </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center py-8">No reviews yet. Be the first to review this product!</p>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="shipping" className="mt-4">
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-semibold mb-2">Shipping Information</h4>
-                <ul className="space-y-1 text-sm text-gray-600">
-                  <li>• Free standard shipping on orders over €25</li>
-                  <li>• Express shipping available for €9.99</li>
-                  <li>• Digital products are delivered instantly</li>
-                  <li>• Processing time: 1-2 business days</li>
-                </ul>
+                  <p className="text-sm text-gray-600">Based on {product.reviewCount} reviews</p>
+                </div>
               </div>
               <Separator />
-              <div>
-                <h4 className="font-semibold mb-2">Returns & Exchanges</h4>
-                <ul className="space-y-1 text-sm text-gray-600">
-                  <li>• 30-day return policy</li>
-                  <li>• Items must be in original condition</li>
-                  <li>• Digital products are non-refundable</li>
-                  <li>• Return shipping costs may apply</li>
-                </ul>
-              </div>
+              <p className="text-gray-600">Reviews feature coming soon...</p>
             </div>
           </TabsContent>
         </Tabs>
