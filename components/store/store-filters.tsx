@@ -1,85 +1,103 @@
 "use client"
 
-import { Search, Filter } from "lucide-react"
+import { useState } from "react"
+import type { ProductFilters, ProductCategory } from "../../types/store"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
-import { storeCategories, storeTags } from "@/data/store-data"
+import { Search, X } from "lucide-react"
 
 interface StoreFiltersProps {
-  searchQuery: string
-  onSearchChange: (query: string) => void
-  selectedCategory: string
-  onCategoryChange: (category: string) => void
-  priceRange: [number, number]
-  onPriceRangeChange: (range: [number, number]) => void
-  selectedTags: string[]
-  onTagsChange: (tags: string[]) => void
-  showInStockOnly: boolean
-  onInStockChange: (checked: boolean) => void
-  showDigitalOnly: boolean
-  onDigitalOnlyChange: (checked: boolean) => void
+  filters: ProductFilters
+  onFiltersChange: (filters: ProductFilters) => void
+  onClearFilters: () => void
 }
 
-export function StoreFilters({
-  searchQuery,
-  onSearchChange,
-  selectedCategory,
-  onCategoryChange,
-  priceRange,
-  onPriceRangeChange,
-  selectedTags,
-  onTagsChange,
-  showInStockOnly,
-  onInStockChange,
-  showDigitalOnly,
-  onDigitalOnlyChange,
-}: StoreFiltersProps) {
+const categories: { value: ProductCategory; label: string }[] = [
+  { value: "apparel", label: "Apparel" },
+  { value: "education", label: "Education" },
+  { value: "books", label: "Books" },
+  { value: "accessories", label: "Accessories" },
+  { value: "digital", label: "Digital" },
+]
+
+const popularTags = [
+  "cotton",
+  "logo",
+  "online",
+  "certificate",
+  "eco-friendly",
+  "branded",
+  "virtual",
+  "leadership",
+  "recognition",
+]
+
+export function StoreFilters({ filters, onFiltersChange, onClearFilters }: StoreFiltersProps) {
+  const [priceRange, setPriceRange] = useState<[number, number]>(filters.priceRange || [0, 100])
+  const [searchTerm, setSearchTerm] = useState(filters.search || "")
+
+  const handleCategoryChange = (category: ProductCategory, checked: boolean) => {
+    onFiltersChange({
+      ...filters,
+      category: checked ? category : undefined,
+    })
+  }
+
+  const handlePriceRangeChange = (value: number[]) => {
+    const newRange: [number, number] = [value[0], value[1]]
+    setPriceRange(newRange)
+    onFiltersChange({
+      ...filters,
+      priceRange: newRange,
+    })
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value)
+    onFiltersChange({
+      ...filters,
+      search: value || undefined,
+    })
+  }
+
   const handleTagToggle = (tag: string) => {
-    if (selectedTags.includes(tag)) {
-      onTagsChange(selectedTags.filter((t) => t !== tag))
-    } else {
-      onTagsChange([...selectedTags, tag])
-    }
+    const currentTags = filters.tags || []
+    const newTags = currentTags.includes(tag) ? currentTags.filter((t) => t !== tag) : [...currentTags, tag]
+
+    onFiltersChange({
+      ...filters,
+      tags: newTags.length > 0 ? newTags : undefined,
+    })
   }
 
-  const clearAllFilters = () => {
-    onSearchChange("")
-    onCategoryChange("all")
-    onPriceRangeChange([0, 100])
-    onTagsChange([])
-    onInStockChange(false)
-    onDigitalOnlyChange(false)
+  const handleStockFilterChange = (checked: boolean) => {
+    onFiltersChange({
+      ...filters,
+      inStock: checked ? true : undefined,
+    })
   }
 
-  const hasActiveFilters =
-    searchQuery ||
-    selectedCategory !== "all" ||
-    priceRange[0] > 0 ||
-    priceRange[1] < 100 ||
-    selectedTags.length > 0 ||
-    showInStockOnly ||
-    showDigitalOnly
+  const activeFiltersCount = Object.values(filters).filter(Boolean).length
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filters
-          </CardTitle>
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-              Clear All
+          <CardTitle className="text-lg">Filters</CardTitle>
+          {activeFiltersCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={onClearFilters} className="text-red-600 hover:text-red-700">
+              <X className="h-4 w-4 mr-1" />
+              Clear ({activeFiltersCount})
             </Button>
           )}
         </div>
       </CardHeader>
+
       <CardContent className="space-y-6">
         {/* Search */}
         <div className="space-y-2">
@@ -89,8 +107,8 @@ export function StoreFilters({
             <Input
               id="search"
               placeholder="Search products..."
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
+              value={searchTerm}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-10"
             />
           </div>
@@ -100,21 +118,16 @@ export function StoreFilters({
         <div className="space-y-3">
           <Label>Categories</Label>
           <div className="space-y-2">
-            {storeCategories.map((category) => (
-              <div key={category.id} className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id={category.id}
-                    checked={selectedCategory === category.id}
-                    onCheckedChange={() => onCategoryChange(category.id)}
-                  />
-                  <Label htmlFor={category.id} className="text-sm font-normal cursor-pointer">
-                    {category.name}
-                  </Label>
-                </div>
-                <Badge variant="secondary" className="text-xs">
-                  {category.count}
-                </Badge>
+            {categories.map((category) => (
+              <div key={category.value} className="flex items-center space-x-2">
+                <Checkbox
+                  id={category.value}
+                  checked={filters.category === category.value}
+                  onCheckedChange={(checked) => handleCategoryChange(category.value, checked as boolean)}
+                />
+                <Label htmlFor={category.value} className="text-sm font-normal">
+                  {category.label}
+                </Label>
               </div>
             ))}
           </div>
@@ -126,7 +139,7 @@ export function StoreFilters({
           <div className="px-2">
             <Slider
               value={priceRange}
-              onValueChange={(value) => onPriceRangeChange(value as [number, number])}
+              onValueChange={handlePriceRangeChange}
               max={100}
               min={0}
               step={5}
@@ -139,22 +152,14 @@ export function StoreFilters({
           </div>
         </div>
 
-        {/* Product Type */}
+        {/* Stock Status */}
         <div className="space-y-3">
-          <Label>Product Type</Label>
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Checkbox id="in-stock" checked={showInStockOnly} onCheckedChange={onInStockChange} />
-              <Label htmlFor="in-stock" className="text-sm font-normal cursor-pointer">
-                In Stock Only
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox id="digital-only" checked={showDigitalOnly} onCheckedChange={onDigitalOnlyChange} />
-              <Label htmlFor="digital-only" className="text-sm font-normal cursor-pointer">
-                Digital Products Only
-              </Label>
-            </div>
+          <Label>Availability</Label>
+          <div className="flex items-center space-x-2">
+            <Checkbox id="inStock" checked={filters.inStock || false} onCheckedChange={handleStockFilterChange} />
+            <Label htmlFor="inStock" className="text-sm font-normal">
+              In Stock Only
+            </Label>
           </div>
         </div>
 
@@ -162,11 +167,11 @@ export function StoreFilters({
         <div className="space-y-3">
           <Label>Tags</Label>
           <div className="flex flex-wrap gap-2">
-            {storeTags.map((tag) => (
+            {popularTags.map((tag) => (
               <Badge
                 key={tag}
-                variant={selectedTags.includes(tag) ? "default" : "outline"}
-                className="cursor-pointer text-xs"
+                variant={filters.tags?.includes(tag) ? "default" : "outline"}
+                className="cursor-pointer hover:bg-primary/80"
                 onClick={() => handleTagToggle(tag)}
               >
                 {tag}
