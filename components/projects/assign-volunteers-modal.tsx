@@ -1,294 +1,212 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
+import { useState } from "react"
+import { Search, UserPlus, Check } from "lucide-react"
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, UserPlus, X } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import { useAuth } from "@/components/auth-context"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { cn } from "@/lib/utils"
 
-interface Volunteer {
-  id: string
-  name: string
-  email: string
-  role: string
-  department: string
-  skills: string[]
-  avatar?: string
-  is_active: boolean
-}
-
-interface Project {
-  id: string
-  title: string
-}
+import type { Project } from "@/types/organization"
+import { useMultiTenant } from "../multi-tenant-context"
+import { mockVolunteers } from "@/data/volunteers-data"
 
 interface AssignVolunteersModalProps {
+  project: Project | null
   isOpen: boolean
   onClose: () => void
-  project: Project
-  onAssignmentComplete: () => void
+  onAssignVolunteers: (projectId: string, volunteerIds: string[]) => void
 }
 
-export function AssignVolunteersModal({ isOpen, onClose, project, onAssignmentComplete }: AssignVolunteersModalProps) {
-  const [volunteers, setVolunteers] = useState<Volunteer[]>([])
-  const [assignedVolunteers, setAssignedVolunteers] = useState<Volunteer[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [assigning, setAssigning] = useState(false)
-  const { user } = useAuth()
-  const supabase = createClient()
+export function AssignVolunteersModal({ project, isOpen, onClose, onAssignVolunteers }: AssignVolunteersModalProps) {
+  const { netzwerkCities } = useMultiTenant()
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedVolunteers, setSelectedVolunteers] = useState<string[]>([])
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchVolunteers()
-      fetchAssignedVolunteers()
-    }
-  }, [isOpen, project.id])
+  if (!project) return null
 
-  const fetchVolunteers = async () => {
-    if (!user?.organization_id) return
+  // Filter volunteers based on search and availability
+  const filteredVolunteers = mockVolunteers.filter((volunteer) => {
+    const matchesSearch =
+      volunteer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      volunteer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      volunteer.profile.location?.toLowerCase().includes(searchQuery.toLowerCase())
 
-    setLoading(true)
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("organization_id", user.organization_id)
-        .eq("is_active", true)
-        .in("role", ["volunteer", "participant"])
-        .order("name")
+    const isNotAlreadyAssigned = !project.volunteers.includes(volunteer.id)
 
-      if (error) {
-        console.error("Error fetching volunteers:", error)
-        return
-      }
+    return matchesSearch && isNotAlreadyAssigned
+  })
 
-      setVolunteers(data || [])
-    } catch (error) {
-      console.error("Error fetching volunteers:", error)
-    } finally {
-      setLoading(false)
-    }
+  const handleVolunteerToggle = (volunteerId: string) => {
+    setSelectedVolunteers((prev) =>
+      prev.includes(volunteerId) ? prev.filter((id) => id !== volunteerId) : [...prev, volunteerId],
+    )
   }
 
-  const fetchAssignedVolunteers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("project_assignments")
-        .select(`
-          volunteer_id,
-          profiles!inner(*)
-        `)
-        .eq("project_id", project.id)
-
-      if (error) {
-        console.error("Error fetching assigned volunteers:", error)
-        return
-      }
-
-      const assigned = data?.map((assignment: any) => assignment.profiles) || []
-      setAssignedVolunteers(assigned)
-    } catch (error) {
-      console.error("Error fetching assigned volunteers:", error)
-    }
+  const handleAssign = () => {
+    onAssignVolunteers(project.id, selectedVolunteers)
+    setSelectedVolunteers([])
+    onClose()
   }
 
-  const assignVolunteer = async (volunteer: Volunteer) => {
-    if (!user?.id) return
-
-    setAssigning(true)
-    try {
-      const { error } = await supabase.from("project_assignments").insert({
-        project_id: project.id,
-        volunteer_id: volunteer.id,
-        assigned_by: user.id,
-        assigned_at: new Date().toISOString(),
-        status: "active",
-      })
-
-      if (error) {
-        console.error("Error assigning volunteer:", error)
-        return
-      }
-
-      setAssignedVolunteers([...assignedVolunteers, volunteer])
-      onAssignmentComplete()
-    } catch (error) {
-      console.error("Error assigning volunteer:", error)
-    } finally {
-      setAssigning(false)
-    }
+  const getNetzwerkCityName = (cityId?: string) => {
+    if (!cityId) return "Main Organization"
+    return netzwerkCities.find((city) => city.id === cityId)?.name || "Unknown City"
   }
-
-  const unassignVolunteer = async (volunteer: Volunteer) => {
-    setAssigning(true)
-    try {
-      const { error } = await supabase
-        .from("project_assignments")
-        .delete()
-        .eq("project_id", project.id)
-        .eq("volunteer_id", volunteer.id)
-
-      if (error) {
-        console.error("Error unassigning volunteer:", error)
-        return
-      }
-
-      setAssignedVolunteers(assignedVolunteers.filter((v) => v.id !== volunteer.id))
-      onAssignmentComplete()
-    } catch (error) {
-      console.error("Error unassigning volunteer:", error)
-    } finally {
-      setAssigning(false)
-    }
-  }
-
-  const filteredVolunteers = volunteers.filter(
-    (volunteer) =>
-      volunteer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      volunteer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      volunteer.skills.some((skill) => skill.toLowerCase().includes(searchTerm.toLowerCase())),
-  )
-
-  const availableVolunteers = filteredVolunteers.filter(
-    (volunteer) => !assignedVolunteers.some((assigned) => assigned.id === volunteer.id),
-  )
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Assign Volunteers to {project.title}</DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[60vh]">
-          {/* Available Volunteers */}
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Available Volunteers</h3>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search volunteers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
+        <div className="space-y-4">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search volunteers by name, email, or location..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
 
-            <div className="overflow-y-auto h-full space-y-2">
-              {loading ? (
-                <div className="text-center py-8 text-gray-500">Loading volunteers...</div>
-              ) : availableVolunteers.length === 0 ? (
+          {/* Currently Assigned Volunteers */}
+          {project.volunteers.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Currently Assigned ({project.volunteers.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {project.volunteers.map((volunteerId, index) => {
+                    const volunteer = mockVolunteers.find((v) => v.id === volunteerId)
+                    return (
+                      <div key={volunteerId} className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={volunteer?.avatar || "/placeholder.svg"} alt={volunteer?.name} />
+                          <AvatarFallback>
+                            {volunteer?.name
+                              ?.split(" ")
+                              .map((n) => n[0])
+                              .join("") || `V${index + 1}`}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="font-medium">{volunteer?.name || `Volunteer ${index + 1}`}</p>
+                          <p className="text-sm text-gray-600">{volunteer?.email || "volunteer@example.com"}</p>
+                          <p className="text-xs text-gray-500">{getNetzwerkCityName(volunteer?.netzwerkCityId)}</p>
+                        </div>
+                        <Badge variant="secondary" className="gap-1">
+                          <Check className="h-3 w-3" />
+                          Assigned
+                        </Badge>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Available Volunteers */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">
+                Available Volunteers ({filteredVolunteers.length})
+                {selectedVolunteers.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">
+                    {selectedVolunteers.length} selected
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {filteredVolunteers.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  {searchTerm ? "No volunteers found matching your search." : "No available volunteers."}
+                  {searchQuery ? "No volunteers found matching your search." : "No available volunteers to assign."}
                 </div>
               ) : (
-                availableVolunteers.map((volunteer) => (
-                  <div
-                    key={volunteer.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={volunteer.avatar || "/placeholder.svg"} />
-                        <AvatarFallback>
-                          {volunteer.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{volunteer.name}</div>
-                        <div className="text-sm text-gray-500">{volunteer.email}</div>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {volunteer.skills.slice(0, 2).map((skill) => (
-                            <Badge key={skill} variant="secondary" className="text-xs">
-                              {skill}
-                            </Badge>
-                          ))}
-                          {volunteer.skills.length > 2 && (
-                            <Badge variant="secondary" className="text-xs">
-                              +{volunteer.skills.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <Button size="sm" onClick={() => assignVolunteer(volunteer)} disabled={assigning}>
-                      <UserPlus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Assigned Volunteers */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Assigned Volunteers ({assignedVolunteers.length})</h3>
-
-            <div className="overflow-y-auto h-full space-y-2">
-              {assignedVolunteers.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">No volunteers assigned yet.</div>
-              ) : (
-                assignedVolunteers.map((volunteer) => (
-                  <div
-                    key={volunteer.id}
-                    className="flex items-center justify-between p-3 border rounded-lg bg-green-50"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={volunteer.avatar || "/placeholder.svg"} />
-                        <AvatarFallback>
-                          {volunteer.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{volunteer.name}</div>
-                        <div className="text-sm text-gray-500">{volunteer.email}</div>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {volunteer.skills.slice(0, 2).map((skill) => (
-                            <Badge key={skill} variant="secondary" className="text-xs">
-                              {skill}
-                            </Badge>
-                          ))}
-                          {volunteer.skills.length > 2 && (
-                            <Badge variant="secondary" className="text-xs">
-                              +{volunteer.skills.length - 2}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => unassignVolunteer(volunteer)}
-                      disabled={assigning}
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {filteredVolunteers.map((volunteer) => (
+                    <div
+                      key={volunteer.id}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                        selectedVolunteers.includes(volunteer.id) ? "bg-blue-50 border-blue-200" : "hover:bg-gray-50",
+                      )}
+                      onClick={() => handleVolunteerToggle(volunteer.id)}
                     >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))
+                      <Checkbox
+                        checked={selectedVolunteers.includes(volunteer.id)}
+                        onChange={() => handleVolunteerToggle(volunteer.id)}
+                      />
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={volunteer.avatar || "/placeholder.svg"} alt={volunteer.name} />
+                        <AvatarFallback>
+                          {volunteer.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{volunteer.name}</p>
+                          <div
+                            className={cn(
+                              "h-2 w-2 rounded-full",
+                              volunteer.status === "online" ? "bg-green-500" : "bg-yellow-500",
+                            )}
+                          />
+                        </div>
+                        <p className="text-sm text-gray-600">{volunteer.email}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-xs text-gray-500">{volunteer.profile.location}</p>
+                          <span className="text-xs text-gray-400">•</span>
+                          <p className="text-xs text-gray-500">{getNetzwerkCityName(volunteer.netzwerkCityId)}</p>
+                          <span className="text-xs text-gray-400">•</span>
+                          <p className="text-xs text-yellow-600">{volunteer.gamification.points} points</p>
+                        </div>
+                        {volunteer.profile.skills.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {volunteer.profile.skills.slice(0, 3).map((tag) => (
+                              <Badge key={tag} variant="outline" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                            {volunteer.profile.skills.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{volunteer.profile.skills.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
-            </div>
-          </div>
-        </div>
+            </CardContent>
+          </Card>
 
-        <div className="flex justify-end space-x-2 pt-4 border-t">
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
+          {/* Actions */}
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={handleAssign} disabled={selectedVolunteers.length === 0} className="gap-2">
+              <UserPlus className="h-4 w-4" />
+              Assign {selectedVolunteers.length} Volunteer{selectedVolunteers.length !== 1 ? "s" : ""}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

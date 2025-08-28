@@ -1,33 +1,22 @@
 "use client"
 
+import { useState } from "react"
+import type { ChatConversation, User } from "@/types/organization"
+import { cn } from "@/lib/utils"
+import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MessageSquarePlus } from "lucide-react"
+import { PlusCircle } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
-
-interface Conversation {
-  id: string
-  title?: string
-  type: "direct" | "group" | "project" | "announcement"
-  participants: Array<{
-    id: string
-    name: string
-    avatar?: string
-  }>
-  lastMessage?: {
-    content: string
-    created_at: string
-    sender_name: string
-  }
-  unreadCount: number
-}
+import { useAuth } from "@/components/auth-context"
 
 interface ChatSidebarProps {
-  conversations: Conversation[]
-  selectedConversation: string | null
-  onSelectConversation: (conversationId: string) => void
+  conversations: ChatConversation[]
+  selectedConversation: ChatConversation | null
+  onSelectConversation: (conversation: ChatConversation) => void
   onNewMessage: () => void
+  currentUser: User
+  allUsers: User[]
 }
 
 export function ChatSidebar({
@@ -35,112 +24,81 @@ export function ChatSidebar({
   selectedConversation,
   onSelectConversation,
   onNewMessage,
+  currentUser,
+  allUsers,
 }: ChatSidebarProps) {
-  const getConversationTitle = (conversation: Conversation, currentUserId: string) => {
-    if (conversation.title) {
-      return conversation.title
-    }
+  const [searchTerm, setSearchTerm] = useState("")
+  const { hasRole } = useAuth()
 
-    if (conversation.type === "direct") {
-      const otherParticipant = conversation.participants.find((p) => p.id !== currentUserId)
-      return otherParticipant?.name || "Unknown User"
-    }
+  const canCreateMessage = hasRole("admin") || hasRole("board_member") || hasRole("volunteer")
 
-    return `Group Chat (${conversation.participants.length} members)`
-  }
-
-  const getConversationAvatar = (conversation: Conversation, currentUserId: string) => {
-    if (conversation.type === "direct") {
-      const otherParticipant = conversation.participants.find((p) => p.id !== currentUserId)
-      return otherParticipant?.avatar || "/placeholder.svg"
-    }
-
-    // For group chats, use a default group avatar or the first participant's avatar
-    return conversation.participants[0]?.avatar || "/placeholder.svg"
-  }
-
-  const getConversationInitials = (conversation: Conversation, currentUserId: string) => {
-    if (conversation.type === "direct") {
-      const otherParticipant = conversation.participants.find((p) => p.id !== currentUserId)
-      return (
-        otherParticipant?.name
-          ?.split(" ")
-          .map((n) => n[0])
-          .join("") || "U"
-      )
-    }
-
-    return "G" // For group chats
-  }
+  const filteredConversations = conversations.filter((conv) => {
+    const otherParticipantId = conv.participants.find((p) => p !== currentUser.id)
+    const otherParticipant = allUsers.find((u) => u.id === otherParticipantId)
+    return otherParticipant?.name.toLowerCase().includes(searchTerm.toLowerCase())
+  })
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col border-r bg-white h-full">
       <div className="p-4 border-b">
-        <Button onClick={onNewMessage} className="w-full gap-2">
-          <MessageSquarePlus className="h-4 w-4" />
-          New Message
-        </Button>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">Chats</h2>
+          {canCreateMessage && (
+            <Button variant="ghost" size="icon" onClick={onNewMessage}>
+              <PlusCircle className="h-5 w-5" />
+              <span className="sr-only">New Message</span>
+            </Button>
+          )}
+        </div>
+        <Input
+          placeholder="Search chats..."
+          className="mt-2"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
-
       <div className="flex-1 overflow-y-auto">
-        {conversations.length === 0 ? (
-          <div className="p-4 text-center text-gray-500">
-            <p>No conversations yet</p>
-            <p className="text-sm mt-1">Start a new conversation to get started</p>
-          </div>
-        ) : (
-          <div className="space-y-1 p-2">
-            {conversations.map((conversation) => (
-              <div
-                key={conversation.id}
-                className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                  selectedConversation === conversation.id ? "bg-blue-50 border border-blue-200" : "hover:bg-gray-50"
-                }`}
-                onClick={() => onSelectConversation(conversation.id)}
+        <nav className="p-2 space-y-1">
+          {filteredConversations.map((conv) => {
+            const otherParticipantId = conv.participants.find((p) => p !== currentUser.id)
+            const otherParticipant = allUsers.find((u) => u.id === otherParticipantId)
+            const lastMessage = conv.messages[conv.messages.length - 1]
+            const unreadCount = conv.messages.filter((m) => !m.isRead && m.senderId !== currentUser.id).length
+
+            if (!otherParticipant) return null
+
+            return (
+              <button
+                key={conv.id}
+                onClick={() => onSelectConversation(conv)}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors",
+                  selectedConversation?.id === conv.id ? "bg-blue-100" : "hover:bg-gray-100",
+                )}
               >
-                <div className="relative">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={getConversationAvatar(conversation, "") || "/placeholder.svg"} />
-                    <AvatarFallback>{getConversationInitials(conversation, "")}</AvatarFallback>
-                  </Avatar>
-                  {conversation.unreadCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-red-500">
-                      {conversation.unreadCount > 9 ? "9+" : conversation.unreadCount}
-                    </Badge>
+                <Avatar className="h-10 w-10">
+                  <AvatarImage
+                    src={otherParticipant.profile?.avatar || "/placeholder.svg"}
+                    alt={otherParticipant.name}
+                  />
+                  <AvatarFallback>{otherParticipant.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 truncate">
+                  <p className="font-semibold">{otherParticipant.name}</p>
+                  {lastMessage && <p className="text-sm text-gray-500 truncate">{lastMessage.content}</p>}
+                </div>
+                <div className="flex flex-col items-end text-xs text-gray-400">
+                  {lastMessage && <p>{formatDistanceToNow(new Date(lastMessage.timestamp), { addSuffix: true })}</p>}
+                  {unreadCount > 0 && (
+                    <span className="mt-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white text-xs">
+                      {unreadCount}
+                    </span>
                   )}
                 </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-sm truncate">{getConversationTitle(conversation, "")}</h3>
-                    {conversation.lastMessage && (
-                      <span className="text-xs text-gray-500">
-                        {formatDistanceToNow(new Date(conversation.lastMessage.created_at), { addSuffix: false })}
-                      </span>
-                    )}
-                  </div>
-
-                  {conversation.lastMessage ? (
-                    <p className="text-sm text-gray-600 truncate">
-                      <span className="font-medium">{conversation.lastMessage.sender_name}: </span>
-                      {conversation.lastMessage.content}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-gray-500 italic">No messages yet</p>
-                  )}
-
-                  {conversation.type === "group" && (
-                    <div className="flex items-center gap-1 mt-1">
-                      <Badge variant="secondary" className="text-xs">
-                        {conversation.participants.length} members
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              </button>
+            )
+          })}
+        </nav>
       </div>
     </div>
   )

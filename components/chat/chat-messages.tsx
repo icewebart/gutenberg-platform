@@ -1,135 +1,100 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useRef, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useEffect, useRef } from "react"
+import type { ChatConversation, User } from "@/types/organization"
+import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Send } from "lucide-react"
-
-interface Message {
-  id: string
-  content: string
-  sender_id: string
-  sender_name: string
-  sender_avatar?: string
-  created_at: string
-  is_read: boolean
-}
+import { Button } from "@/components/ui/button"
+import { MoreVertical } from "lucide-react"
+import { ChatInput } from "./chat-input"
 
 interface ChatMessagesProps {
-  messages: Message[]
+  conversation: ChatConversation | null
+  currentUser: User
+  allUsers: User[]
   onSendMessage: (content: string) => void
-  currentUserId: string
 }
 
-export function ChatMessages({ messages, onSendMessage, currentUserId }: ChatMessagesProps) {
-  const [newMessage, setNewMessage] = useState("")
-  const [sending, setSending] = useState(false)
+export function ChatMessages({ conversation, currentUser, allUsers, onSendMessage }: ChatMessagesProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newMessage.trim() || sending) return
+  useEffect(() => {
+    scrollToBottom()
+  }, [conversation?.messages])
 
-    setSending(true)
-    try {
-      await onSendMessage(newMessage.trim())
-      setNewMessage("")
-    } catch (error) {
-      console.error("Error sending message:", error)
-    } finally {
-      setSending(false)
-    }
+  if (!conversation) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-lg font-medium text-gray-800">Select a conversation</p>
+          <p className="text-sm text-gray-500">Choose a user from the sidebar to start chatting.</p>
+        </div>
+      </div>
+    )
   }
 
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-
-    if (diffInHours < 24) {
-      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    } else if (diffInHours < 24 * 7) {
-      return date.toLocaleDateString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })
-    } else {
-      return date.toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
-    }
-  }
+  const otherParticipantId = conversation.participants.find((p) => p !== currentUser.id)
+  const otherParticipant = allUsers.find((u) => u.id === otherParticipantId)
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            <div className="text-center">
-              <div className="text-4xl mb-2">👋</div>
-              <p>No messages yet. Start the conversation!</p>
+    <div className="flex flex-col h-full bg-gray-50">
+      <header className="flex items-center justify-between p-4 border-b bg-white">
+        {otherParticipant ? (
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={otherParticipant.profile?.avatar || "/placeholder.svg"} alt={otherParticipant.name} />
+              <AvatarFallback>{otherParticipant.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="font-semibold">{otherParticipant.name}</p>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={cn(
+                    "h-2 w-2 rounded-full",
+                    otherParticipant.status === "online" ? "bg-green-500" : "bg-gray-400",
+                  )}
+                />
+                <p className="text-xs text-gray-500">{otherParticipant.status}</p>
+              </div>
             </div>
           </div>
         ) : (
-          messages.map((message) => {
-            const isOwnMessage = message.sender_id === currentUserId
-            return (
-              <div key={message.id} className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}>
-                <div className={`flex max-w-xs lg:max-w-md ${isOwnMessage ? "flex-row-reverse" : "flex-row"}`}>
-                  {!isOwnMessage && (
-                    <Avatar className="h-8 w-8 mr-2">
-                      <AvatarImage src={message.sender_avatar || "/placeholder.svg"} />
-                      <AvatarFallback>
-                        {message.sender_name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                  <div
-                    className={`px-4 py-2 rounded-lg ${
-                      isOwnMessage ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-900"
-                    }`}
-                  >
-                    {!isOwnMessage && (
-                      <div className="text-xs font-medium mb-1 text-gray-600">{message.sender_name}</div>
-                    )}
-                    <div className="text-sm">{message.content}</div>
-                    <div className={`text-xs mt-1 ${isOwnMessage ? "text-blue-100" : "text-gray-500"}`}>
-                      {formatTime(message.created_at)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          })
+          <div />
         )}
+        <Button variant="ghost" size="icon">
+          <MoreVertical className="h-5 w-5" />
+        </Button>
+      </header>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {conversation.messages.map((message) => {
+          const isSender = message.senderId === currentUser.id
+          const sender = allUsers.find((u) => u.id === message.senderId)
+          return (
+            <div key={message.id} className={cn("flex items-end gap-2", isSender ? "justify-end" : "justify-start")}>
+              {!isSender && sender && (
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={sender.profile?.avatar || "/placeholder.svg"} alt={sender.name} />
+                  <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+              )}
+              <div
+                className={cn(
+                  "max-w-xs md:max-w-md lg:max-w-lg rounded-2xl px-4 py-2",
+                  isSender ? "bg-blue-600 text-white rounded-br-none" : "bg-white text-gray-800 border rounded-bl-none",
+                )}
+              >
+                <p className="text-sm">{message.content}</p>
+              </div>
+            </div>
+          )
+        })}
         <div ref={messagesEndRef} />
       </div>
-
-      {/* Message Input */}
-      <div className="border-t p-4">
-        <form onSubmit={handleSendMessage} className="flex space-x-2">
-          <Input
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
-            disabled={sending}
-            className="flex-1"
-          />
-          <Button type="submit" disabled={!newMessage.trim() || sending}>
-            <Send className="h-4 w-4" />
-          </Button>
-        </form>
-      </div>
+      <ChatInput onSendMessage={onSendMessage} disabled={!conversation} />
     </div>
   )
 }

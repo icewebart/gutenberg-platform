@@ -1,305 +1,154 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useMemo, useEffect } from "react"
+import type { ChatConversation } from "@/types/organization"
+import { conversations as mockConversations } from "@/data/chat-data"
+import { users as allUsersData } from "@/data/users-data"
+import { useAuth } from "@/components/auth-context"
 import { ChatSidebar } from "./chat-sidebar"
 import { ChatMessages } from "./chat-messages"
 import { NewMessageModal } from "./new-message-modal"
-import { createClient } from "@/lib/supabase/client"
-import { useAuth } from "@/components/auth-context"
-
-interface Conversation {
-  id: string
-  title?: string
-  type: "direct" | "group"
-  participants: Array<{
-    id: string
-    name: string
-    avatar?: string
-  }>
-  lastMessage?: {
-    content: string
-    created_at: string
-    sender_name: string
-  }
-  unreadCount: number
-}
-
-interface Message {
-  id: string
-  content: string
-  sender_id: string
-  sender_name: string
-  sender_avatar?: string
-  created_at: string
-  is_read: boolean
-}
+import { Card, CardContent } from "@/components/ui/card"
 
 export function ChatLayout() {
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null)
-  const [messages, setMessages] = useState<Message[]>([])
-  const [loading, setLoading] = useState(true)
+  const { user: currentUser, hasRole } = useAuth()
+  const [conversations, setConversations] = useState<ChatConversation[]>(mockConversations)
   const [isNewMessageModalOpen, setIsNewMessageModalOpen] = useState(false)
-  const { user } = useAuth()
-  const supabase = createClient()
+
+  const userConversations = useMemo(() => {
+    if (!currentUser) return []
+    return conversations.filter((c) => c.participants.includes(currentUser.id))
+  }, [currentUser, conversations])
+
+  const [selectedConversation, setSelectedConversation] = useState<ChatConversation | null>(null)
 
   useEffect(() => {
-    if (user) {
-      fetchConversations()
-      setupRealtimeSubscriptions()
+    if (userConversations.length > 0 && !selectedConversation) {
+      const lastActiveConversation = userConversations.sort((a, b) => {
+        const lastMsgA = new Date(a.messages[a.messages.length - 1]?.timestamp || 0).getTime()
+        const lastMsgB = new Date(b.messages[b.messages.length - 1]?.timestamp || 0).getTime()
+        return lastMsgB - lastMsgA
+      })[0]
+      setSelectedConversation(lastActiveConversation)
     }
-  }, [user])
+  }, [userConversations, selectedConversation])
 
-  useEffect(() => {
-    if (selectedConversation) {
-      fetchMessages(selectedConversation)
-    }
-  }, [selectedConversation])
+  const potentialRecipients = useMemo(() => {
+    if (!currentUser) return []
 
-  const fetchConversations = async () => {
-    if (!user) return
-
-    try {
-      const { data, error } = await supabase
-        .from("conversation_participants")
-        .select(`
-          conversation_id,
-          conversations (
-            id,
-            title,
-            type,
-            created_at
-          )
-        `)
-        .eq("user_id", user.id)
-
-      if (error) {
-        console.error("Error fetching conversations:", error)
-        return
-      }
-
-      const conversationIds = data.map((item) => item.conversation_id)
-
-      if (conversationIds.length === 0) {
-        setConversations([])
-        setLoading(false)
-        return
-      }
-
-      // Fetch participants for each conversation
-      const conversationsWithParticipants = await Promise.all(
-        data.map(async (item) => {
-          const conversation = item.conversations
-
-          // Get participants
-          const { data: participantsData } = await supabase
-            .from("conversation_participants")
-            .select(`
-              user_id,
-              profiles (
-                id,
-                name,
-                avatar
-              )
-            `)
-            .eq("conversation_id", conversation.id)
-
-          const participants = participantsData?.map((p: any) => p.profiles).filter(Boolean) || []
-
-          // Get last message
-          const { data: lastMessageData } = await supabase
-            .from("messages")
-            .select(`
-              content,
-              created_at,
-              profiles (
-                name
-              )
-            `)
-            .eq("conversation_id", conversation.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-
-          const lastMessage = lastMessageData?.[0]
-            ? {
-                content: lastMessageData[0].content,
-                created_at: lastMessageData[0].created_at,
-                sender_name: lastMessageData[0].profiles?.name || "Unknown",
-              }
-            : undefined
-
-          // Get unread count
-          const { count: unreadCount } = await supabase
-            .from("messages")
-            .select("*", { count: "exact", head: true })
-            .eq("conversation_id", conversation.id)
-            .neq("sender_id", user.id)
-            .eq("is_read", false)
-
-          return {
-            id: conversation.id,
-            title: conversation.title,
-            type: conversation.type,
-            participants,
-            lastMessage,
-            unreadCount: unreadCount || 0,
-          }
-        }),
+    if (hasRole("board_member") || hasRole("admin")) {
+      // Board members and admins can message any volunteer (active or inactive) or other board members/admins
+      return allUsersData.filter(
+        (u) => u.id !== currentUser.id && (u.role === "volunteer" || u.role === "board_member" || u.role === "admin"),
       )
-
-      setConversations(conversationsWithParticipants)
-    } catch (error) {
-      console.error("Error fetching conversations:", error)
-    } finally {
-      setLoading(false)
     }
-  }
 
-  const fetchMessages = async (conversationId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("messages")
-        .select(`
-          id,
-          content,
-          sender_id,
-          created_at,
-          is_read,
-          profiles (
-            name,
-            avatar
-          )
-        `)
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true })
-
-      if (error) {
-        console.error("Error fetching messages:", error)
-        return
-      }
-
-      const formattedMessages = data.map((message: any) => ({
-        id: message.id,
-        content: message.content,
-        sender_id: message.sender_id,
-        sender_name: message.profiles?.name || "Unknown",
-        sender_avatar: message.profiles?.avatar,
-        created_at: message.created_at,
-        is_read: message.is_read,
-      }))
-
-      setMessages(formattedMessages)
-
-      // Mark messages as read
-      await supabase
-        .from("messages")
-        .update({ is_read: true })
-        .eq("conversation_id", conversationId)
-        .neq("sender_id", user.id)
-    } catch (error) {
-      console.error("Error fetching messages:", error)
-    }
-  }
-
-  const setupRealtimeSubscriptions = () => {
-    if (!user) return
-
-    // Subscribe to new messages
-    const messagesSubscription = supabase
-      .channel("messages")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-        },
-        (payload) => {
-          const newMessage = payload.new as any
-
-          // If this message is for the currently selected conversation, add it to messages
-          if (selectedConversation === newMessage.conversation_id) {
-            fetchMessages(selectedConversation)
-          }
-
-          // Refresh conversations to update last message and unread counts
-          fetchConversations()
-        },
+    if (hasRole("volunteer")) {
+      // Volunteers can message other active volunteers and board members/admins
+      return allUsersData.filter(
+        (u) =>
+          u.id !== currentUser.id &&
+          u.isActive &&
+          (u.role === "volunteer" || u.role === "board_member" || u.role === "admin"),
       )
-      .subscribe()
-
-    return () => {
-      messagesSubscription.unsubscribe()
     }
-  }
 
-  const sendMessage = async (content: string) => {
-    if (!selectedConversation || !user) return
+    return []
+  }, [currentUser, hasRole])
 
-    try {
-      const { error } = await supabase.from("messages").insert({
-        conversation_id: selectedConversation,
-        sender_id: user.id,
-        content,
-      })
-
-      if (error) {
-        console.error("Error sending message:", error)
-        return
-      }
-
-      // Messages will be updated via realtime subscription
-    } catch (error) {
-      console.error("Error sending message:", error)
-    }
-  }
-
-  const handleNewConversation = (conversationId: string) => {
-    setSelectedConversation(conversationId)
-    fetchConversations()
-    setIsNewMessageModalOpen(false)
-  }
-
-  if (loading) {
+  if (!currentUser) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading conversations...</p>
-        </div>
-      </div>
+      <Card className="h-[calc(100vh-10rem)] flex items-center justify-center">
+        <p>Loading chat...</p>
+      </Card>
     )
   }
 
-  return (
-    <div className="flex h-full bg-white rounded-lg shadow-sm border">
-      <div className="w-1/3 border-r">
-        <ChatSidebar
-          conversations={conversations}
-          selectedConversation={selectedConversation}
-          onSelectConversation={setSelectedConversation}
-          onNewMessage={() => setIsNewMessageModalOpen(true)}
-        />
-      </div>
-      <div className="flex-1">
-        {selectedConversation ? (
-          <ChatMessages messages={messages} onSendMessage={sendMessage} currentUserId={user?.id || ""} />
-        ) : (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            <div className="text-center">
-              <div className="text-6xl mb-4">💬</div>
-              <h3 className="text-lg font-medium mb-2">No conversation selected</h3>
-              <p className="text-sm">Choose a conversation from the sidebar or start a new one</p>
-            </div>
-          </div>
-        )}
-      </div>
+  const handleSelectConversation = (conversation: ChatConversation) => {
+    const updatedConversation = {
+      ...conversation,
+      messages: conversation.messages.map((m) => (m.senderId !== currentUser.id ? { ...m, isRead: true } : m)),
+    }
 
+    const updatedConversations = conversations.map((c) => (c.id === conversation.id ? updatedConversation : c))
+
+    setConversations(updatedConversations)
+    setSelectedConversation(updatedConversation)
+  }
+
+  const handleSendMessage = (content: string) => {
+    if (!selectedConversation) return
+
+    const newMessage = {
+      id: `msg-${Date.now()}`,
+      senderId: currentUser.id,
+      content,
+      timestamp: new Date().toISOString(),
+      isRead: false,
+    }
+
+    const updatedConversations = conversations.map((conv) => {
+      if (conv.id === selectedConversation.id) {
+        const newMessages = [...conv.messages, newMessage]
+        return { ...conv, messages: newMessages }
+      }
+      return conv
+    })
+
+    setConversations(updatedConversations)
+    const updatedSelectedConv = updatedConversations.find((c) => c.id === selectedConversation.id)
+    setSelectedConversation(updatedSelectedConv || null)
+  }
+
+  const handleCreateConversation = (userId: string) => {
+    // Check if a conversation with this user already exists
+    const existingConversation = conversations.find(
+      (c) => c.participants.includes(userId) && c.participants.includes(currentUser.id),
+    )
+
+    if (existingConversation) {
+      setSelectedConversation(existingConversation)
+    } else {
+      // Create a new conversation
+      const newConversation: ChatConversation = {
+        id: `conv-${Date.now()}`,
+        participants: [currentUser.id, userId],
+        messages: [],
+      }
+      setConversations((prev) => [...prev, newConversation])
+      setSelectedConversation(newConversation)
+    }
+  }
+
+  return (
+    <>
+      <Card className="h-[calc(100vh-10rem)] shadow-lg">
+        <CardContent className="p-0 h-full">
+          <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] h-full">
+            <ChatSidebar
+              conversations={userConversations}
+              selectedConversation={selectedConversation}
+              onSelectConversation={handleSelectConversation}
+              onNewMessage={() => setIsNewMessageModalOpen(true)}
+              currentUser={currentUser}
+              allUsers={allUsersData}
+            />
+            <ChatMessages
+              conversation={selectedConversation}
+              onSendMessage={handleSendMessage}
+              currentUser={currentUser}
+              allUsers={allUsersData}
+            />
+          </div>
+        </CardContent>
+      </Card>
       <NewMessageModal
         isOpen={isNewMessageModalOpen}
         onClose={() => setIsNewMessageModalOpen(false)}
-        onConversationCreated={handleNewConversation}
+        users={potentialRecipients}
+        onCreateConversation={handleCreateConversation}
+        currentUser={currentUser}
       />
-    </div>
+    </>
   )
 }

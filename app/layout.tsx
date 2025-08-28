@@ -4,29 +4,26 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/components/auth-context"
 import { MultiTenantProvider } from "@/components/multi-tenant-context"
-import { ThemeProvider } from "@/components/theme-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Gutenberg CRM - Volunteer Management System",
-  description: "A comprehensive volunteer management system for the Gutenberg Foundation",
-    generator: 'v0.dev'
+  title: "Gutenberg CRM",
+  description: "Volunteer and Project Management Platform",
+    generator: 'v0.app'
 }
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <AuthProvider>
-            <MultiTenantProvider>{children}</MultiTenantProvider>
-          </AuthProvider>
-        </ThemeProvider>
+    <html lang="en" className="h-full bg-gray-50">
+      <body className={`${inter.className} h-full`}>
+        <AuthProvider>
+          <MultiTenantProvider>{children}</MultiTenantProvider>
+        </AuthProvider>
       </body>
     </html>
   )

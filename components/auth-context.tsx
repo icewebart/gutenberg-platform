@@ -1,182 +1,101 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useEffect, useState } from "react"
-import type { User } from "@supabase/supabase-js"
-import { createClient } from "@/lib/supabase/client"
+import { createContext, useContext, useState, useEffect } from "react"
+import type { User } from "../types/organization"
+import { users } from "@/data/users-data"
 
-interface Profile {
-  id: string
-  user_id: string
-  first_name: string
-  last_name: string
-  email: string
-  role: "admin" | "manager" | "coordinator" | "volunteer"
-  organization_id: string
-  city_id: string
-  created_at: string
-  updated_at: string
-}
-
-type AuthContextType = {
+interface AuthContextType {
   user: User | null
-  profile: Profile | null
+  login: (email: string, password: string) => Promise<boolean>
+  logout: () => void
+  register: (userData: Partial<User>) => Promise<boolean>
   loading: boolean
-  signOut: () => Promise<void>
-  signInWithDemo: (role: "admin" | "manager" | "volunteer") => Promise<void>
+  hasPermission: (permission: string) => boolean
+  hasRole: (role: string) => boolean
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  profile: null,
-  loading: true,
-  signOut: async () => {},
-  signInWithDemo: async (role: "admin" | "manager" | "volunteer") => {},
-})
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
 
   useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      setUser(user)
-      if (user) {
-        fetchProfile(user.id)
-      } else {
+    const checkAuth = async () => {
+      try {
+        const savedUser = localStorage.getItem("currentUser")
+        if (savedUser) {
+          setUser(JSON.parse(savedUser))
+        }
+      } catch (error) {
+        console.error("Auth check failed:", error)
+      } finally {
         setLoading(false)
       }
     }
+    checkAuth()
+  }, [])
 
-    getUser()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        await fetchProfile(session.user.id)
-      } else {
-        setProfile(null)
-        setLoading(false)
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [supabase.auth])
-
-  async function fetchProfile(userId: string) {
+  const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const { data, error } = await supabase.from("profiles").select("*").eq("user_id", userId).single()
+      setLoading(true)
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      if (error) {
-        console.error("Error fetching profile:", error)
-      } else {
-        setProfile(data)
+      const userToLogin = users.find((u) => u.email === email)
+
+      if (!userToLogin) {
+        // For the demo, if user not found, log in as participant
+        const participantUser = users.find((u) => u.role === "participant")
+        if (participantUser) {
+          setUser(participantUser)
+          localStorage.setItem("currentUser", JSON.stringify(participantUser))
+          return true
+        }
+        return false
       }
+
+      setUser(userToLogin)
+      localStorage.setItem("currentUser", JSON.stringify(userToLogin))
+      return true
     } catch (error) {
-      console.error("Error fetching profile:", error)
+      console.error("Login failed:", error)
+      return false
     } finally {
       setLoading(false)
     }
   }
 
-  async function signOut() {
-    await supabase.auth.signOut()
+  const logout = () => {
     setUser(null)
-    setProfile(null)
+    localStorage.removeItem("currentUser")
   }
 
-  async function signInWithDemo(role: "admin" | "manager" | "volunteer") {
-    const demoUsers = {
-      admin: {
-        email: "admin@demo.com",
-        password: "demo123456",
-        fullName: "Admin Demo User",
-        orgId: "550e8400-e29b-41d4-a716-446655440000",
-      },
-      manager: {
-        email: "manager@demo.com",
-        password: "demo123456",
-        fullName: "Manager Demo User",
-        orgId: "550e8400-e29b-41d4-a716-446655440001",
-      },
-      volunteer: {
-        email: "volunteer@demo.com",
-        password: "demo123456",
-        fullName: "Volunteer Demo User",
-        orgId: "550e8400-e29b-41d4-a716-446655440002",
-      },
-    }
-
-    const userData = demoUsers[role]
-
-    // Try to sign in first
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: userData.email,
-      password: userData.password,
-    })
-
-    if (!signInError) {
-      // User exists and signed in successfully
-      return
-    }
-
-    // User doesn't exist, create them
-    const { data, error } = await supabase.auth.signUp({
-      email: userData.email,
-      password: userData.password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        data: {
-          full_name: userData.fullName,
-          role: role,
-        },
-      },
-    })
-
-    if (error) {
-      throw error
-    }
-
-    if (data.user) {
-      // Create the profile with the specific role and organization
-      const { error: profileError } = await supabase.rpc("create_demo_user_profile", {
-        user_id: data.user.id,
-        user_email: userData.email,
-        user_name: userData.fullName,
-        user_role: role,
-        org_id: userData.orgId,
-      })
-
-      if (profileError) {
-        console.error("Profile creation error:", profileError)
-      }
-
-      // Sign in the newly created user
-      const { error: signInError2 } = await supabase.auth.signInWithPassword({
-        email: userData.email,
-        password: userData.password,
-      })
-
-      if (signInError2) {
-        throw signInError2
-      }
+  const register = async (userData: Partial<User>): Promise<boolean> => {
+    try {
+      setLoading(true)
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      return true
+    } catch (error) {
+      console.error("Registration failed:", error)
+      return false
+    } finally {
+      setLoading(false)
     }
   }
 
-  const value = {
-    user,
-    profile,
-    loading,
-    signOut,
-    signInWithDemo,
+  const hasPermission = (permission: string): boolean => {
+    if (!user) return false
+    if (user.permissions.includes("*")) return true
+    return user.permissions.includes(permission)
   }
+
+  const hasRole = (role: string): boolean => {
+    if (!user) return false
+    return user.role === role
+  }
+
+  const value = { user, login, logout, register, loading, hasPermission, hasRole }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
