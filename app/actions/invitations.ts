@@ -15,8 +15,7 @@ export async function sendInvitationAction(formData: FormData) {
     throw new Error("Not authenticated")
   }
 
-  // Check if user has permission (admin or board_member)
-  const { data: profile } = await supabase.from("user_profiles").select("role").eq("id", user.id).single()
+  const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single()
 
   if (!profile || (profile.role !== "admin" && profile.role !== "board_member")) {
     throw new Error("Unauthorized: Only admins and board members can send invitations")
@@ -104,8 +103,7 @@ export async function createMemberManuallyAction(formData: FormData) {
     throw new Error("Not authenticated")
   }
 
-  // Check if user has permission (admin or board_member)
-  const { data: profile } = await supabase.from("user_profiles").select("role").eq("id", user.id).single()
+  const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single()
 
   if (!profile || (profile.role !== "admin" && profile.role !== "board_member")) {
     throw new Error("Unauthorized: Only admins and board members can create members manually")
@@ -134,8 +132,7 @@ export async function createMemberManuallyAction(formData: FormData) {
       throw new Error("Failed to create user account")
     }
 
-    // Create user profile
-    const { error: profileError } = await supabase.from("user_profiles").insert({
+    const { error: profileError } = await supabase.from("users").insert({
       id: authData.user.id,
       name,
       email,
