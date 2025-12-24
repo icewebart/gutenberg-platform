@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { Plus, Download, Upload } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,12 +12,12 @@ import { useMultiTenant } from "../multi-tenant-context"
 import { ProjectFilters } from "./project-filters"
 import { ProjectCard } from "./project-card"
 import { ProjectDetailModal } from "./project-detail-modal"
-import { CreateProjectModal } from "./create-project-modal"
 import { AssignVolunteersModal } from "./assign-volunteers-modal"
 import { mockProjects } from "@/data/projects-data"
 import type { Project } from "@/types/organization"
 
 export function ProjectsManagement() {
+  const router = useRouter()
   const { user, hasPermission, hasRole } = useAuth()
   const { currentOrganization, netzwerkCities } = useMultiTenant()
 
@@ -33,7 +34,6 @@ export function ProjectsManagement() {
 
   // Modal states
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
-  const [showCreateModal, setShowCreateModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
@@ -97,18 +97,13 @@ export function ProjectsManagement() {
     }
   }, [projects, currentOrganization.id, user.id])
 
-  const handleCreateProject = (projectData: Partial<Project>) => {
-    const newProject: Project = {
-      id: `proj-${Date.now()}`,
-      ...projectData,
-    } as Project
-
-    setProjects((prev) => [...prev, newProject])
+  const handleCreateProject = () => {
+    router.push("/projects/create")
   }
 
   const handleEditProject = (project: Project) => {
     setEditingProject(project)
-    setShowCreateModal(true)
+    router.push("/projects/edit")
   }
 
   const handleUpdateProject = (projectData: Partial<Project>) => {
@@ -216,7 +211,7 @@ export function ProjectsManagement() {
         </div>
         <div className="flex gap-2">
           {(hasPermission("create_projects") || hasPermission("*")) && (
-            <Button onClick={() => setShowCreateModal(true)} className="rounded-xl">
+            <Button onClick={handleCreateProject} className="rounded-xl">
               <Plus className="mr-2 h-4 w-4" />
               New Project
             </Button>
@@ -333,7 +328,7 @@ export function ProjectsManagement() {
                   : "No projects are available at the moment."}
               </p>
               {(hasPermission("create_projects") || hasPermission("*")) && (
-                <Button onClick={() => setShowCreateModal(true)} className="rounded-xl">
+                <Button onClick={handleCreateProject} className="rounded-xl">
                   <Plus className="mr-2 h-4 w-4" />
                   Create First Project
                 </Button>
@@ -353,16 +348,6 @@ export function ProjectsManagement() {
         }}
         onJoinProject={handleJoinProject}
         onAssignVolunteers={handleAssignVolunteersModal}
-      />
-
-      <CreateProjectModal
-        isOpen={showCreateModal}
-        onClose={() => {
-          setShowCreateModal(false)
-          setEditingProject(null)
-        }}
-        onCreateProject={editingProject ? handleUpdateProject : handleCreateProject}
-        editingProject={editingProject}
       />
 
       <AssignVolunteersModal
