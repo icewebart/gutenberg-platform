@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { mockVolunteers } from "@/data/volunteers-data"
 import { VolunteerFilters } from "./volunteer-filters"
-import { InviteVolunteerModal } from "./invite-volunteer-modal"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useAuth } from "@/components/auth-context"
-import { Award } from "lucide-react"
+import { Award, UserPlus } from "lucide-react"
+import { MemberManagementTabs } from "../members/member-management-tabs"
 
 const DEPARTMENTS = ["HR", "PR", "FR", "AB", "Board", "Alumni"]
 const AVAILABLE_YEARS = [2026, 2025, 2024, 2023]
@@ -19,7 +20,7 @@ const AVAILABLE_YEARS = [2026, 2025, 2024, 2023]
 export function VolunteersManagement() {
   const router = useRouter()
   const { user, hasPermission } = useAuth()
-  const [isInviteModalOpen, setInviteModalOpen] = useState(false)
+  const [isManagementDialogOpen, setManagementDialogOpen] = useState(false)
 
   const [filters, setFilters] = useState({
     search: "",
@@ -96,7 +97,20 @@ export function VolunteersManagement() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Volunteers</h1>
         {hasPermission("manage_volunteers") && (
-          <Button onClick={() => setInviteModalOpen(true)}>Invite Volunteer</Button>
+          <Dialog open={isManagementDialogOpen} onOpenChange={setManagementDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add Member
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Member Management</DialogTitle>
+              </DialogHeader>
+              <MemberManagementTabs />
+            </DialogContent>
+          </Dialog>
         )}
       </div>
       <VolunteerFilters
@@ -177,9 +191,6 @@ export function VolunteersManagement() {
           </TableBody>
         </Table>
       </div>
-      {hasPermission("manage_volunteers") && (
-        <InviteVolunteerModal isOpen={isInviteModalOpen} onClose={() => setInviteModalOpen(false)} />
-      )}
     </div>
   )
 }

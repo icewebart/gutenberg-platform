@@ -1,7 +1,17 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { Database } from './database.types'
 
+let client: ReturnType<typeof createBrowserClient<Database>> | null = null
+
+/**
+ * Creates a Supabase browser client for use in Client Components.
+ * Uses singleton pattern to ensure only one client instance exists.
+ */
 export function createClient() {
+  if (client) {
+    return client
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -12,9 +22,7 @@ export function createClient() {
     )
   }
 
-  return createBrowserClient<Database>(
-    supabaseUrl,
-    supabaseAnonKey
-  )
-}
+  client = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
 
+  return client
+}
