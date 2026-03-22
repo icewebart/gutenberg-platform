@@ -21,7 +21,9 @@
       "Bash(git commit:*)",
       "Bash(git remote:*)",
       "Bash(git push:*)",
-      "Bash(pnpm --filter shared build)"
+      "Bash(pnpm --filter shared build)",
+      "Bash(ssh -T git@github.com)",
+      "Bash(gh auth:*)"
     ]
   }
 }
