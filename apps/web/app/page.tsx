@@ -25,7 +25,9 @@ export default function Home() {
     return showRegistration ? (
       <RegistrationForm onSwitchToLogin={() => setShowRegistration(false)} />
     ) : (
-      <LoginForm onSwitchToRegister={() => setShowRegistration(true)} />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 pt-24 px-4">
+        <LoginForm onSwitchToRegister={() => setShowRegistration(true)} />
+      </div>
     )
   }
 
