@@ -1,28 +1,31 @@
 import { redirect } from "next/navigation"
-import { createServerClient } from "@/lib/supabase/server"
-import { getVolunteers } from "@/lib/supabase/projects"
+import { cookies } from "next/headers"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { CreateProjectForm } from "@/components/projects/create-project-form"
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+
 export default async function CreateProjectPage() {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const cookieStore = await cookies()
+  const token = cookieStore.get("gutenberg_session")?.value
 
-  if (!user) {
-    redirect("/auth")
+  if (!token) {
+    redirect("/")
   }
 
-  // Fetch user profile
-  const { data: profile } = await supabase.from("users").select("*").eq("id", user.id).single()
+  const headers = { Authorization: `Bearer ${token}` }
 
-  if (!profile) {
-    redirect("/auth")
+  const [meRes, usersRes] = await Promise.all([
+    fetch(`${API_URL}/auth/me`, { headers }),
+    fetch(`${API_URL}/users`, { headers }),
+  ])
+
+  if (!meRes.ok) {
+    redirect("/")
   }
 
-  // Fetch volunteers for project manager and member selection
-  const volunteers = await getVolunteers(profile.organization_id)
+  const profile = await meRes.json()
+  const volunteers = usersRes.ok ? await usersRes.json() : []
 
   return (
     <DashboardLayout>
@@ -36,7 +39,7 @@ export default async function CreateProjectPage() {
           organizationId={profile.organization_id}
           netzwerkCityId={profile.netzwerk_city_id}
           volunteers={volunteers}
-          currentUserId={user.id}
+          currentUserId={profile.id}
         />
       </div>
     </DashboardLayout>
