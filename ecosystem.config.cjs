@@ -2,8 +2,8 @@ module.exports = {
   apps: [
     {
       name: "gutenberg-api",
-      script: "./apps/api/dist/index.js",
-      cwd: "/www/wwwroot/gutenberg-platform",
+      script: "dist/index.js",
+      cwd: "/www/wwwroot/gutenberg-platform/apps/api",
       env_file: "/www/wwwroot/gutenberg-platform/apps/api/.env",
       instances: 1,
       autorestart: true,
