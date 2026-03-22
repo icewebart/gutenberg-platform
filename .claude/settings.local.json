@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git mv:*)",
+      "Bash(/Users/mark/gutenberg-platform/apps/web/.env.local:*)",
+      "Bash(/Users/mark/gutenberg-platform/apps/api/.env:*)",
+      "Bash(/Users/mark/gutenberg-platform/.gitignore:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm --filter api build)",
+      "Bash(openssl rand:*)",
+      "Bash(docker info:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker exec:*)",
+      "Bash(pnpm --filter api db:generate)",
+      "Bash(pnpm --filter api db:migrate)",
+      "Bash(curl -s http://localhost:4000/health)",
+      "Bash(curl -s -X POST http://localhost:4000/auth/login -H \"Content-Type: application/json\" -d '{\"\"\"\"email\"\"\"\":\"\"\"\"admin@gutenberg.org\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"changeme123!\"\"\"\"}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(git add:*)"
+    ]
+  }
+}
