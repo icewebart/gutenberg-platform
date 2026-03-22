@@ -1,3 +1,4 @@
+export const runtime = 'edge'
 import { redirect } from "next/navigation"
 import { cookies } from "next/headers"
 import { DashboardLayout } from "@/components/dashboard-layout"
