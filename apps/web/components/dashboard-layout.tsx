@@ -21,6 +21,7 @@ import {
   Building2,
   MapPin,
   Activity,
+  UserCog,
 } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -109,7 +110,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/learning", label: "Learning Center", icon: GraduationCap, permission: "*" },
           { href: "/store", label: "Store", icon: Store, permission: "*" },
           { href: "/chat", label: "Chat", icon: MessageCircle, permission: "*" },
-          { href: "/settings", label: "Settings", icon: Settings, permission: "*" },
         ]
 
       default:
@@ -212,14 +212,23 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 </Avatar>
               </button>
               {userMenuOpen && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-200 py-2" style={{ zIndex: 9999 }}>
+                <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl shadow-xl border border-gray-200 py-2" style={{ zIndex: 9999 }}>
                   <div className="px-4 py-2 border-b border-gray-100">
                     <p className="text-sm font-medium text-gray-900">{user.name}</p>
                     <p className="text-xs text-gray-500">{user.email}</p>
                   </div>
+                  <Link
+                    href="/settings"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="w-full px-4 py-2 mt-1 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  >
+                    <UserCog className="h-4 w-4" />
+                    Profile &amp; Settings
+                  </Link>
+                  <div className="border-t border-gray-100 mt-1" />
                   <button
                     onClick={logout}
-                    className="w-full px-4 py-2 mt-1 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                   >
                     <LogOut className="h-4 w-4" />
                     Sign Out
