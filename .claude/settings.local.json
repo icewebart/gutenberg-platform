@@ -25,7 +25,8 @@
       "Bash(ssh -T git@github.com)",
       "Bash(gh auth:*)",
       "Bash(ssh-add ~/.ssh/id_ed25519_new)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(pnpm --filter web build)"
     ]
   }
 }

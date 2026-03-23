@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,6 +18,7 @@ interface RegistrationFormProps {
 
 export function RegistrationForm({ onSwitchToLogin }: RegistrationFormProps) {
   const { register } = useAuth()
+  const router = useRouter()
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -53,7 +55,9 @@ export function RegistrationForm({ onSwitchToLogin }: RegistrationFormProps) {
         password: formData.password,
         role: formData.role,
       })
-      if (!success) {
+      if (success) {
+        router.push("/dashboard")
+      } else {
         setError("Registration failed. Email may already be in use.")
       }
     } catch {

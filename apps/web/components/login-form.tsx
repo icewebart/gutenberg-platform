@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,13 +21,16 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const { login, loading } = useAuth()
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
     const success = await login(email, password)
-    if (!success) {
+    if (success) {
+      router.push("/dashboard")
+    } else {
       setError("Invalid email or password")
     }
   }

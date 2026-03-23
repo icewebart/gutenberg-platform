@@ -1,5 +1,6 @@
 "use client"
 import { motion } from "framer-motion"
+import { useRouter } from "next/navigation"
 import { Calendar, Users, Award, TrendingUp, MapPin, Star, ArrowRight, Plus, Bell, Activity } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -13,11 +14,8 @@ import { useMultiTenant } from "./multi-tenant-context"
 import { RoleBadge } from "./role-badge"
 import { mockProjects } from "@/data/projects-data"
 
-interface DashboardOverviewProps {
-  onTabChange?: (tab: string) => void
-}
-
-export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
+export function DashboardOverview() {
+  const router = useRouter()
   const { user, hasRole } = useAuth()
   const { currentOrganization, netzwerkCities } = useMultiTenant()
 
@@ -422,7 +420,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                   <Button
                     variant="outline"
                     className="justify-start rounded-xl bg-transparent"
-                    onClick={() => onTabChange?.("volunteers")}
+                    onClick={() => router.push("/members")}
                   >
                     <Users className="mr-2 h-4 w-4" />
                     Manage Volunteers

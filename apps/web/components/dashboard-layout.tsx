@@ -4,6 +4,8 @@ import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
 import { motion } from "framer-motion"
+import { usePathname } from "next/navigation"
+import Link from "next/link"
 import {
   Users,
   FolderOpen,
@@ -32,13 +34,12 @@ import { OrganizationSelector } from "./organization-selector"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
-  activeTab: string
-  onTabChange: (tab: string) => void
 }
 
-export function DashboardLayout({ children, activeTab, onTabChange }: DashboardLayoutProps) {
+export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, logout, hasPermission, hasRole } = useAuth()
   const { currentOrganization, netzwerkCities } = useMultiTenant()
+  const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
@@ -64,59 +65,51 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
   const userNetzwerkCity = user.netzwerkCityId ? netzwerkCities.find((city) => city.id === user.netzwerkCityId) : null
 
   const getNavigationItems = () => {
-    const baseItems = [
-      {
-        id: "dashboard",
-        label: "Dashboard",
-        icon: Activity,
-        permission: null,
-      },
-    ]
+    const baseItems = [{ href: "/dashboard", label: "Dashboard", icon: Activity, permission: null }]
 
     switch (user.role) {
       case "volunteer":
         return [
           ...baseItems,
-          { id: "projects", label: "Projects", icon: FolderOpen, permission: "view_projects" },
-          { id: "community", label: "Community", icon: MessageSquare, permission: "view_community" },
-          { id: "learning", label: "Learning Center", icon: GraduationCap, permission: "view_learning_center" },
-          { id: "store", label: "Store", icon: Store, permission: "view_store" },
-          { id: "chat", label: "Chat", icon: MessageCircle, permission: null },
+          { href: "/projects", label: "Projects", icon: FolderOpen, permission: "view_projects" },
+          { href: "/community", label: "Community", icon: MessageSquare, permission: "view_community" },
+          { href: "/learning", label: "Learning Center", icon: GraduationCap, permission: "view_learning_center" },
+          { href: "/store", label: "Store", icon: Store, permission: "view_store" },
+          { href: "/chat", label: "Chat", icon: MessageCircle, permission: null },
         ]
 
       case "participant":
         return [
           ...baseItems,
-          { id: "my-projects", label: "My Projects", icon: FolderOpen, permission: "view_assigned_projects" },
-          { id: "community", label: "Community", icon: MessageSquare, permission: "view_community" },
-          { id: "learning", label: "Learning Center", icon: GraduationCap, permission: "view_learning_center" },
+          { href: "/my-projects", label: "My Projects", icon: FolderOpen, permission: "view_assigned_projects" },
+          { href: "/community", label: "Community", icon: MessageSquare, permission: "view_community" },
+          { href: "/learning", label: "Learning Center", icon: GraduationCap, permission: "view_learning_center" },
         ]
 
       case "board_member":
         return [
           ...baseItems,
-          { id: "volunteers", label: "Volunteers", icon: Users, permission: "manage_volunteers" },
-          { id: "projects", label: "Projects", icon: FolderOpen, permission: "view_projects" },
-          { id: "netzwerk", label: "Netzwerk Cities", icon: MapPin, permission: "manage_netzwerk" },
-          { id: "community", label: "Community", icon: MessageSquare, permission: "view_community" },
-          { id: "learning", label: "Learning Center", icon: GraduationCap, permission: "view_learning_center" },
-          { id: "store", label: "Store", icon: Store, permission: "view_store" },
-          { id: "chat", label: "Chat", icon: MessageCircle, permission: null },
+          { href: "/members", label: "Members", icon: Users, permission: "manage_volunteers" },
+          { href: "/projects", label: "Projects", icon: FolderOpen, permission: "view_projects" },
+          { href: "/netzwerk", label: "Netzwerk Cities", icon: MapPin, permission: "manage_netzwerk" },
+          { href: "/community", label: "Community", icon: MessageSquare, permission: "view_community" },
+          { href: "/learning", label: "Learning Center", icon: GraduationCap, permission: "view_learning_center" },
+          { href: "/store", label: "Store", icon: Store, permission: "view_store" },
+          { href: "/chat", label: "Chat", icon: MessageCircle, permission: null },
         ]
 
       case "admin":
         return [
           ...baseItems,
-          { id: "organizations", label: "Organizations", icon: Building2, permission: "*" },
-          { id: "users", label: "All Users", icon: Users, permission: "*" },
-          { id: "volunteers", label: "Volunteers", icon: Users, permission: "*" },
-          { id: "projects", label: "Projects", icon: FolderOpen, permission: "*" },
-          { id: "netzwerk", label: "Netzwerk Cities", icon: MapPin, permission: "*" },
-          { id: "community", label: "Community", icon: MessageSquare, permission: "*" },
-          { id: "learning", label: "Learning Center", icon: GraduationCap, permission: "*" },
-          { id: "store", label: "Store", icon: Store, permission: "*" },
-          { id: "chat", label: "Chat", icon: MessageCircle, permission: "*" },
-          { id: "settings", label: "Settings", icon: Settings, permission: "*" },
+          { href: "/organizations", label: "Organizations", icon: Building2, permission: "*" },
+          { href: "/members", label: "Members", icon: Users, permission: "*" },
+          { href: "/projects", label: "Projects", icon: FolderOpen, permission: "*" },
+          { href: "/netzwerk", label: "Netzwerk Cities", icon: MapPin, permission: "*" },
+          { href: "/community", label: "Community", icon: MessageSquare, permission: "*" },
+          { href: "/learning", label: "Learning Center", icon: GraduationCap, permission: "*" },
+          { href: "/store", label: "Store", icon: Store, permission: "*" },
+          { href: "/chat", label: "Chat", icon: MessageCircle, permission: "*" },
+          { href: "/settings", label: "Settings", icon: Settings, permission: "*" },
         ]
 
       default:
@@ -129,6 +122,8 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
     if (item.permission === "*") return hasRole("admin")
     return hasPermission(item.permission)
   })
+
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/")
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
@@ -253,20 +248,18 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
             <nav className="flex-1 p-4">
               <div className="space-y-2">
                 {navigationItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      onTabChange(item.id)
-                      setMobileMenuOpen(false)
-                    }}
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors",
-                      activeTab === item.id ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100",
+                      "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
+                      isActive(item.href) ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100",
                     )}
                   >
                     <item.icon className="h-5 w-5" />
                     {item.label}
-                  </button>
+                  </Link>
                 ))}
               </div>
             </nav>
@@ -282,17 +275,17 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
           <nav className="p-4">
             <div className="space-y-2">
               {navigationItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => onTabChange(item.id)}
+                <Link
+                  key={item.href}
+                  href={item.href}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium transition-colors",
-                    activeTab === item.id ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100",
+                    "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
+                    isActive(item.href) ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100",
                   )}
                 >
                   <item.icon className="h-5 w-5" />
                   {item.label}
-                </button>
+                </Link>
               ))}
             </div>
           </nav>
@@ -300,7 +293,7 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
 
         <main className="flex-1 p-4 lg:p-6">
           <motion.div
-            key={activeTab}
+            key={pathname}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
