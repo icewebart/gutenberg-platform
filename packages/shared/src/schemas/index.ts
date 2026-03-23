@@ -12,7 +12,7 @@ export const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   role: z.enum(["volunteer", "participant"]).optional(),
-  organizationId: z.string().uuid(),
+  organizationId: z.string().uuid().optional(),
   netzwerkCityId: z.string().uuid().optional(),
 })
 

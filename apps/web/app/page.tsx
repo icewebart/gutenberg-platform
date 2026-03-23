@@ -7,10 +7,10 @@ import { RegistrationForm } from "@/components/registration-form"
 import { GutenbergCRM } from "@/components/gutenberg-crm"
 
 export default function Home() {
-  const { user, isLoading } = useAuth()
+  const { user, loading } = useAuth()
   const [showRegistration, setShowRegistration] = useState(false)
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
         <div className="text-center">

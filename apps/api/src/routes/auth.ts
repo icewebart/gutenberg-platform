@@ -1,7 +1,7 @@
 import { Router } from "express"
 import bcrypt from "bcryptjs"
 import { eq } from "drizzle-orm"
-import { db, users } from "../db"
+import { db, users, organizations } from "../db"
 import { signToken } from "../lib/jwt"
 import { loginSchema, registerSchema } from "@gutenberg/shared"
 import { requireAuth, type AuthRequest } from "../middleware/auth"
@@ -58,6 +58,17 @@ router.post("/register", async (req, res) => {
       return
     }
 
+    // Auto-assign to first org if not provided
+    let orgId = data.organizationId
+    if (!orgId) {
+      const defaultOrg = await db.query.organizations.findFirst()
+      if (!defaultOrg) {
+        res.status(500).json({ error: "No organization found" })
+        return
+      }
+      orgId = defaultOrg.id
+    }
+
     const hash = await bcrypt.hash(data.password, 12)
     const [user] = await db
       .insert(users)
@@ -66,7 +77,7 @@ router.post("/register", async (req, res) => {
         passwordHash: hash,
         name: data.name,
         role: data.role ?? "volunteer",
-        organizationId: data.organizationId,
+        organizationId: orgId,
         netzwerkCityId: data.netzwerkCityId,
         department: "None",
         permissions: [],

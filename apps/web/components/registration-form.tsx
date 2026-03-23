@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,69 +8,55 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Building2, User, Mail, Lock, MapPin } from "lucide-react"
+import { Building2, User, Mail, Lock } from "lucide-react"
+import { useAuth } from "./auth-context"
 
 interface RegistrationFormProps {
   onSwitchToLogin: () => void
 }
 
 export function RegistrationForm({ onSwitchToLogin }: RegistrationFormProps) {
+  const { register } = useAuth()
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
-    organization: "",
-    role: "",
-    netzwerkCity: "",
+    role: "volunteer" as "volunteer" | "participant",
     agreeToTerms: false,
   })
-
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-
-  const organizations = [
-    { id: "gutenberg", name: "Gutenberg Foundation" },
-    { id: "greentech", name: "GreenTech Solutions" },
-    { id: "community", name: "Community Connect" },
-  ]
-
-  const netzwerkCities = [
-    { id: "berlin", name: "Berlin" },
-    { id: "munich", name: "Munich" },
-    { id: "hamburg", name: "Hamburg" },
-    { id: "cologne", name: "Cologne" },
-  ]
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-    setLoading(true)
 
-    // Validation
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match")
-      setLoading(false)
       return
     }
-
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters")
+      return
+    }
     if (!formData.agreeToTerms) {
       setError("Please agree to the terms and conditions")
-      setLoading(false)
       return
     }
 
+    setLoading(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // Here you would typically make an API call to register the user
-      console.log("Registration data:", formData)
-
-      // For demo purposes, we'll just show success
-      alert("Registration successful! Please check your email for verification.")
-      onSwitchToLogin()
-    } catch (err) {
+      const success = await register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+      })
+      if (!success) {
+        setError("Registration failed. Email may already be in use.")
+      }
+    } catch {
       setError("Registration failed. Please try again.")
     } finally {
       setLoading(false)
@@ -87,7 +72,7 @@ export function RegistrationForm({ onSwitchToLogin }: RegistrationFormProps) {
           </div>
         </div>
         <CardTitle className="text-2xl font-bold text-center">Create Account</CardTitle>
-        <CardDescription className="text-center">Join our multi-tenant platform</CardDescription>
+        <CardDescription className="text-center">Join the Gutenberg platform</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -124,56 +109,17 @@ export function RegistrationForm({ onSwitchToLogin }: RegistrationFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="organization">Organization</Label>
-            <Select
-              value={formData.organization}
-              onValueChange={(value) => setFormData({ ...formData, organization: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select your organization" />
-              </SelectTrigger>
-              <SelectContent>
-                {organizations.map((org) => (
-                  <SelectItem key={org.id} value={org.id}>
-                    {org.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="role">Role</Label>
-            <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
+            <Select
+              value={formData.role}
+              onValueChange={(value) => setFormData({ ...formData, role: value as "volunteer" | "participant" })}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select your role" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="volunteer">Volunteer</SelectItem>
                 <SelectItem value="participant">Participant</SelectItem>
-                <SelectItem value="board_member">Board Member</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="netzwerkCity" className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              Netzwerk City
-            </Label>
-            <Select
-              value={formData.netzwerkCity}
-              onValueChange={(value) => setFormData({ ...formData, netzwerkCity: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select your city" />
-              </SelectTrigger>
-              <SelectContent>
-                {netzwerkCities.map((city) => (
-                  <SelectItem key={city.id} value={city.id}>
-                    {city.name}
-                  </SelectItem>
-                ))}
               </SelectContent>
             </Select>
           </div>
@@ -188,7 +134,7 @@ export function RegistrationForm({ onSwitchToLogin }: RegistrationFormProps) {
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder="Create a password"
+              placeholder="At least 8 characters"
               required
             />
           </div>

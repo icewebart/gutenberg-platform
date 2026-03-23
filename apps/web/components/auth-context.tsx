@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<boolean>
   logout: () => void
-  register: (userData: Partial<User>) => Promise<boolean>
+  register: (userData: { name: string; email: string; password: string; role?: string }) => Promise<boolean>
   loading: boolean
   hasPermission: (permission: string) => boolean
   hasRole: (role: string) => boolean
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null)
   }
 
-  const register = async (userData: Partial<User>): Promise<boolean> => {
+  const register = async (userData: { name: string; email: string; password: string; role?: string }): Promise<boolean> => {
     try {
       setLoading(true)
       const res = await fetch("/api/bff/auth/register", {
