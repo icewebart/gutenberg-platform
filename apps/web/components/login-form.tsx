@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Building2, Mail, Lock, Eye, EyeOff } from "lucide-react"
+import { BookOpen, Mail, Lock, Eye, EyeOff } from "lucide-react"
 import { useAuth } from "./auth-context"
 
 interface LoginFormProps {
@@ -31,28 +31,16 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
     }
   }
 
-  const demoAccounts = [
-    { email: "admin@gutenberg.org", role: "Admin", password: "admin123" },
-    { email: "board@gutenberg.org", role: "Board Member", password: "board123" },
-    { email: "volunteer@gutenberg.org", role: "Volunteer", password: "volunteer123" },
-    { email: "participant@gutenberg.org", role: "Participant", password: "participant123" },
-  ]
-
-  const handleDemoLogin = (demoEmail: string, demoPassword: string) => {
-    setEmail(demoEmail)
-    setPassword(demoPassword)
-  }
-
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="space-y-1">
         <div className="flex items-center justify-center mb-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 text-white">
-            <Building2 className="h-6 w-6" />
+            <BookOpen className="h-6 w-6" />
           </div>
         </div>
         <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
-        <CardDescription className="text-center">Sign in to your multi-tenant platform account</CardDescription>
+        <CardDescription className="text-center">Sign in to your Gutenberg account</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -114,25 +102,6 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           </div>
         </form>
 
-        <div className="mt-6 pt-6 border-t">
-          <p className="text-sm text-gray-600 mb-3 text-center">Demo Accounts:</p>
-          <div className="space-y-2">
-            {demoAccounts.map((account, index) => (
-              <Button
-                key={index}
-                variant="outline"
-                size="sm"
-                className="w-full justify-start text-left bg-transparent"
-                onClick={() => handleDemoLogin(account.email, account.password)}
-              >
-                <div className="flex flex-col items-start">
-                  <span className="font-medium">{account.role}</span>
-                  <span className="text-xs text-gray-500">{account.email}</span>
-                </div>
-              </Button>
-            ))}
-          </div>
-        </div>
       </CardContent>
     </Card>
   )
