@@ -60,7 +60,7 @@ export function RoleBadge({ role, size = "sm" }: RoleBadgeProps) {
   }
 
   return (
-    <Badge className={`${config.color} ${sizeClasses[size]} flex items-center gap-1 border`}>
+    <Badge className={`${config.color} ${sizeClasses[size]} flex items-center gap-1 border pointer-events-none select-none`}>
       <Icon className={iconSizes[size]} />
       {config.label}
     </Badge>

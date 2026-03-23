@@ -152,6 +152,7 @@ export function VolunteersManagement() {
                 <TableHead className="hidden md:table-cell">Role</TableHead>
                 <TableHead className="hidden md:table-cell">Department</TableHead>
                 <TableHead className="hidden sm:table-cell">Status</TableHead>
+                <TableHead className="hidden lg:table-cell">Joined</TableHead>
                 <TableHead className="text-right">Points</TableHead>
               </TableRow>
             </TableHeader>
@@ -195,6 +196,9 @@ export function VolunteersManagement() {
                     >
                       {member.isActive ? "Active" : "Inactive"}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell text-sm text-gray-400">
+                    {new Date(member.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1 font-medium">

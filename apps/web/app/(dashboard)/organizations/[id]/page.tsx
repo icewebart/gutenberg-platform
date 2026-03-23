@@ -14,16 +14,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import {
-  ArrowLeft, Building2, Globe, Loader2, Save, Users, MapPin, Plus, Trash2
-} from "lucide-react"
+import { ArrowLeft, Building2, Globe, Loader2, Save, Users, GraduationCap, Network } from "lucide-react"
 import Link from "next/link"
+import { cn } from "@/lib/utils"
 
 interface Org {
   id: string
   name: string
   domain: string
+  type: string
   settings: { allowRegistration: boolean; requireApproval: boolean; defaultRole: string }
   createdAt: string
   updatedAt: string
@@ -37,17 +36,15 @@ interface Member {
   department: string
   isActive: boolean
   avatar?: string
-  gamification?: { points: number }
-}
-
-interface City {
-  id: string
-  name: string
-  country: string
-  organizationId: string
+  createdAt: string
 }
 
 const ROLES = ["admin", "board_member", "volunteer", "participant"]
+
+const ORG_TYPES = [
+  { value: "student_organization", label: "Student Organization", icon: GraduationCap },
+  { value: "netzwerk_organization", label: "Netzwerk Organization", icon: Network },
+]
 
 export default function OrganizationDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -57,42 +54,34 @@ export default function OrganizationDetailPage() {
 
   const [org, setOrg] = useState<Org | null>(null)
   const [members, setMembers] = useState<Member[]>([])
-  const [cities, setCities] = useState<City[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState("details")
 
-  // Edit form state
   const [editName, setEditName] = useState("")
   const [editDomain, setEditDomain] = useState("")
+  const [editType, setEditType] = useState("student_organization")
   const [editAllowReg, setEditAllowReg] = useState(true)
   const [editRequireApproval, setEditRequireApproval] = useState(false)
   const [editDefaultRole, setEditDefaultRole] = useState("volunteer")
 
-  // City dialog
-  const [cityDialogOpen, setCityDialogOpen] = useState(false)
-  const [cityForm, setCityForm] = useState({ name: "", country: "" })
-  const [cityCreating, setCityCreating] = useState(false)
-
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [orgRes, membersRes, citiesRes] = await Promise.all([
+        const [orgRes, membersRes] = await Promise.all([
           fetch(`/api/bff/organizations/${id}`),
           fetch(`/api/bff/users?organizationId=${id}`),
-          fetch(`/api/bff/organizations/${id}/cities`),
         ])
         if (orgRes.ok) {
           const data = await orgRes.json()
           setOrg(data)
           setEditName(data.name)
           setEditDomain(data.domain)
+          setEditType(data.type ?? "student_organization")
           setEditAllowReg(data.settings?.allowRegistration ?? true)
           setEditRequireApproval(data.settings?.requireApproval ?? false)
           setEditDefaultRole(data.settings?.defaultRole ?? "volunteer")
         }
         if (membersRes.ok) setMembers(await membersRes.json())
-        if (citiesRes.ok) setCities(await citiesRes.json())
       } finally {
         setLoading(false)
       }
@@ -109,11 +98,8 @@ export default function OrganizationDetailPage() {
         body: JSON.stringify({
           name: editName,
           domain: editDomain,
-          settings: {
-            allowRegistration: editAllowReg,
-            requireApproval: editRequireApproval,
-            defaultRole: editDefaultRole,
-          },
+          type: editType,
+          settings: { allowRegistration: editAllowReg, requireApproval: editRequireApproval, defaultRole: editDefaultRole },
         }),
       })
       if (res.ok) setOrg(await res.json())
@@ -131,26 +117,6 @@ export default function OrganizationDetailPage() {
     if (res.ok) {
       const updated = await res.json()
       setMembers((prev) => prev.map((m) => (m.id === memberId ? { ...m, role: updated.role } : m)))
-    }
-  }
-
-  const handleAddCity = async () => {
-    if (!cityForm.name || !cityForm.country) return
-    setCityCreating(true)
-    try {
-      const res = await fetch(`/api/bff/organizations/${id}/cities`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cityForm),
-      })
-      if (res.ok) {
-        const city = await res.json()
-        setCities((prev) => [...prev, city])
-        setCityDialogOpen(false)
-        setCityForm({ name: "", country: "" })
-      }
-    } finally {
-      setCityCreating(false)
     }
   }
 
@@ -173,13 +139,14 @@ export default function OrganizationDetailPage() {
     )
   }
 
+  const typeConfig = ORG_TYPES.find((t) => t.value === org.type) ?? ORG_TYPES[0]
+  const TypeIcon = typeConfig.icon
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={() => router.push("/organizations")}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Organizations
-        </Button>
-      </div>
+      <Button variant="ghost" onClick={() => router.push("/organizations")}>
+        <ArrowLeft className="mr-2 h-4 w-4" /> Organizations
+      </Button>
 
       {/* Header */}
       <div className="flex items-center gap-4">
@@ -188,22 +155,25 @@ export default function OrganizationDetailPage() {
         </div>
         <div>
           <h1 className="title-page">{org.name}</h1>
-          <div className="flex items-center gap-1 text-sm text-gray-500">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
             <Globe className="h-3.5 w-3.5" />
             {org.domain}
+            <Badge variant="outline" className="text-xs flex items-center gap-1">
+              <TypeIcon className="h-3 w-3" />
+              {typeConfig.label}
+            </Badge>
           </div>
         </div>
-        <div className="ml-auto flex gap-2 text-sm text-gray-500">
-          <span className="flex items-center gap-1"><Users className="h-4 w-4" />{members.length} members</span>
-          <span className="flex items-center gap-1"><MapPin className="h-4 w-4" />{cities.length} cities</span>
+        <div className="ml-auto text-sm text-gray-500 flex items-center gap-1">
+          <Users className="h-4 w-4" />
+          {members.length} members
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs defaultValue="details">
         <TabsList className="rounded-field">
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="members">Members ({members.length})</TabsTrigger>
-          <TabsTrigger value="cities">Cities ({cities.length})</TabsTrigger>
         </TabsList>
 
         {/* ── Details ── */}
@@ -221,6 +191,32 @@ export default function OrganizationDetailPage() {
                 <Label>Domain</Label>
                 <Input className="rounded-field" value={editDomain} onChange={(e) => setEditDomain(e.target.value)} disabled={!isAdmin} />
               </div>
+              <div className="space-y-2">
+                <Label>Organization Type</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {ORG_TYPES.map((t) => {
+                    const Icon = t.icon
+                    const selected = editType === t.value
+                    return (
+                      <button
+                        key={t.value}
+                        type="button"
+                        disabled={!isAdmin}
+                        onClick={() => setEditType(t.value)}
+                        className={cn(
+                          "flex flex-col items-center gap-2 p-4 rounded-box border-2 text-center transition-all disabled:opacity-50",
+                          selected
+                            ? "border-blue-500 bg-blue-50 text-blue-700"
+                            : "border-gray-200 hover:border-gray-300 text-gray-600"
+                        )}
+                      >
+                        <Icon className="h-6 w-6" />
+                        <span className="text-xs font-medium leading-tight">{t.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
               <div className="space-y-1">
                 <Label>Default Role for New Members</Label>
                 <Select value={editDefaultRole} onValueChange={setEditDefaultRole} disabled={!isAdmin}>
@@ -236,26 +232,21 @@ export default function OrganizationDetailPage() {
               </div>
               <div className="space-y-3">
                 <Label>Settings</Label>
-                <div className="flex items-center justify-between py-2 border-b">
-                  <span className="text-sm">Allow Registration</span>
-                  <button
-                    disabled={!isAdmin}
-                    onClick={() => setEditAllowReg(!editAllowReg)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${editAllowReg ? "bg-blue-600" : "bg-gray-200"}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${editAllowReg ? "translate-x-6" : "translate-x-1"}`} />
-                  </button>
-                </div>
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm">Require Approval</span>
-                  <button
-                    disabled={!isAdmin}
-                    onClick={() => setEditRequireApproval(!editRequireApproval)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${editRequireApproval ? "bg-blue-600" : "bg-gray-200"}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${editRequireApproval ? "translate-x-6" : "translate-x-1"}`} />
-                  </button>
-                </div>
+                {[
+                  { label: "Allow Registration", value: editAllowReg, set: setEditAllowReg },
+                  { label: "Require Approval", value: editRequireApproval, set: setEditRequireApproval },
+                ].map(({ label, value, set }) => (
+                  <div key={label} className="flex items-center justify-between py-2 border-b last:border-0">
+                    <span className="text-sm">{label}</span>
+                    <button
+                      disabled={!isAdmin}
+                      onClick={() => set(!value)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${value ? "bg-blue-600" : "bg-gray-200"}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${value ? "translate-x-6" : "translate-x-1"}`} />
+                    </button>
+                  </div>
+                ))}
               </div>
               {isAdmin && (
                 <Button onClick={handleSaveDetails} disabled={saving} className="btn-primary">
@@ -270,7 +261,7 @@ export default function OrganizationDetailPage() {
         {/* ── Members ── */}
         <TabsContent value="members" className="mt-6">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle className="title-section">Members</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -284,6 +275,7 @@ export default function OrganizationDetailPage() {
                       <TableHead className="hidden md:table-cell">Email</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead className="hidden sm:table-cell">Status</TableHead>
+                      <TableHead className="hidden lg:table-cell">Joined</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -324,58 +316,13 @@ export default function OrganizationDetailPage() {
                             {member.isActive ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>
+                        <TableCell className="hidden lg:table-cell text-sm text-gray-400">
+                          {new Date(member.createdAt).toLocaleDateString()}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ── Cities ── */}
-        <TabsContent value="cities" className="mt-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="title-section">Netzwerk Cities</CardTitle>
-              <Dialog open={cityDialogOpen} onOpenChange={setCityDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm"><Plus className="mr-2 h-4 w-4" />Add City</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader><DialogTitle>Add Netzwerk City</DialogTitle></DialogHeader>
-                  <div className="space-y-4 pt-2">
-                    <div className="space-y-1">
-                      <Label>City Name</Label>
-                      <Input className="rounded-field" placeholder="Berlin" value={cityForm.name} onChange={(e) => setCityForm((f) => ({ ...f, name: e.target.value }))} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Country</Label>
-                      <Input className="rounded-field" placeholder="Germany" value={cityForm.country} onChange={(e) => setCityForm((f) => ({ ...f, country: e.target.value }))} />
-                    </div>
-                    <Button onClick={handleAddCity} disabled={cityCreating} className="w-full btn-primary">
-                      {cityCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                      Add City
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </CardHeader>
-            <CardContent>
-              {cities.length === 0 ? (
-                <p className="text-center text-gray-500 py-12">No cities yet.</p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {cities.map((city) => (
-                    <div key={city.id} className="flex items-center gap-3 p-3 rounded-field border bg-gray-50">
-                      <MapPin className="h-5 w-5 text-blue-500 flex-shrink-0" />
-                      <div>
-                        <p className="font-medium text-sm">{city.name}</p>
-                        <p className="text-xs text-gray-500">{city.country}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               )}
             </CardContent>
           </Card>

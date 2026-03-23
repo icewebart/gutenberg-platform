@@ -14,6 +14,7 @@ export const organizations = pgTable("organizations", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   domain: text("domain").notNull().unique(),
+  type: text("type").notNull().default("student_organization"),
   settings: jsonb("settings").notNull().default({
     allowRegistration: true,
     requireApproval: false,

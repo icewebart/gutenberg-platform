@@ -49,12 +49,13 @@ router.get("/:id/cities", requireAuth, async (req: AuthRequest, res) => {
 // PATCH /organizations/:id (admin only)
 router.patch("/:id", requireAuth, requireRole("admin"), async (req: AuthRequest, res) => {
   try {
-    const { name, domain, settings } = req.body
+    const { name, domain, type, settings } = req.body
     const [updated] = await db
       .update(organizations)
       .set({
         ...(name ? { name } : {}),
         ...(domain ? { domain } : {}),
+        ...(type ? { type } : {}),
         ...(settings ? { settings } : {}),
         updatedAt: new Date(),
       })
@@ -89,12 +90,17 @@ router.delete("/:id", requireAuth, requireRole("admin"), async (req: AuthRequest
 // POST /organizations (admin only)
 router.post("/", requireAuth, requireRole("admin"), async (req: AuthRequest, res) => {
   try {
-    const { name, domain, settings } = req.body
+    const { name, domain, type, settings } = req.body
     if (!name || !domain) {
       res.status(400).json({ error: "name and domain are required" })
       return
     }
-    const [org] = await db.insert(organizations).values({ name, domain, settings }).returning()
+    const [org] = await db.insert(organizations).values({
+      name,
+      domain,
+      type: type ?? "student_organization",
+      settings,
+    }).returning()
     res.status(201).json(org)
   } catch (err: any) {
     if (err.code === "23505") {

@@ -10,15 +10,32 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Building2, Globe, Users, Plus, Loader2, ArrowRight } from "lucide-react"
+import { Building2, Globe, Plus, Loader2, ArrowRight, GraduationCap, Network } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface Org {
   id: string
   name: string
   domain: string
+  type: string
   settings: { allowRegistration: boolean; requireApproval: boolean; defaultRole: string }
   createdAt: string
 }
+
+const ORG_TYPES = [
+  {
+    value: "student_organization",
+    label: "Student Organization",
+    icon: GraduationCap,
+    desc: "A student-led organization or university group",
+  },
+  {
+    value: "netzwerk_organization",
+    label: "Netzwerk Organization",
+    icon: Network,
+    desc: "A city or regional Netzwerk hub",
+  },
+]
 
 export default function OrganizationsPage() {
   const router = useRouter()
@@ -28,12 +45,10 @@ export default function OrganizationsPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [form, setForm] = useState({ name: "", domain: "" })
+  const [form, setForm] = useState({ name: "", domain: "", type: "student_organization" })
   const [error, setError] = useState("")
 
-  useEffect(() => {
-    fetchOrgs()
-  }, [])
+  useEffect(() => { fetchOrgs() }, [])
 
   const fetchOrgs = async () => {
     try {
@@ -51,13 +66,13 @@ export default function OrganizationsPage() {
       const res = await fetch("/api/bff/organizations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name, domain: form.domain }),
+        body: JSON.stringify(form),
       })
       if (res.ok) {
-        const org = await res.json()
-        setOrgs((prev) => [...prev, org])
+        const newOrg = await res.json()
+        setOrgs((prev) => [...prev, newOrg])
         setDialogOpen(false)
-        setForm({ name: "", domain: "" })
+        setForm({ name: "", domain: "", type: "student_organization" })
       } else {
         const data = await res.json()
         setError(data.error || "Failed to create organization.")
@@ -66,6 +81,8 @@ export default function OrganizationsPage() {
       setCreating(false)
     }
   }
+
+  const getTypeConfig = (type: string) => ORG_TYPES.find((t) => t.value === type) ?? ORG_TYPES[0]
 
   return (
     <div className="space-y-6">
@@ -99,6 +116,31 @@ export default function OrganizationsPage() {
                     onChange={(e) => setForm((f) => ({ ...f, domain: e.target.value }))}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Organization Type</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {ORG_TYPES.map((t) => {
+                      const Icon = t.icon
+                      const selected = form.type === t.value
+                      return (
+                        <button
+                          key={t.value}
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, type: t.value }))}
+                          className={cn(
+                            "flex flex-col items-center gap-2 p-4 rounded-box border-2 text-center transition-all",
+                            selected
+                              ? "border-blue-500 bg-blue-50 text-blue-700"
+                              : "border-gray-200 hover:border-gray-300 text-gray-600"
+                          )}
+                        >
+                          <Icon className="h-6 w-6" />
+                          <span className="text-xs font-medium leading-tight">{t.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
                 {error && <p className="text-sm text-red-500">{error}</p>}
                 <Button onClick={handleCreate} disabled={creating} className="w-full btn-primary">
                   {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -118,39 +160,41 @@ export default function OrganizationsPage() {
         <div className="text-center py-24 text-gray-500">No organizations found.</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {orgs.map((org) => (
-            <button
-              key={org.id}
-              onClick={() => router.push(`/organizations/${org.id}`)}
-              className="text-left rounded-box border bg-white p-6 hover:shadow-md hover:border-blue-200 transition-all group"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                  <Building2 className="h-6 w-6 text-white" />
+          {orgs.map((org) => {
+            const typeConfig = getTypeConfig(org.type)
+            const TypeIcon = typeConfig.icon
+            return (
+              <button
+                key={org.id}
+                onClick={() => router.push(`/organizations/${org.id}`)}
+                className="text-left rounded-box border bg-white p-6 hover:shadow-md hover:border-blue-200 transition-all group"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                    <Building2 className="h-6 w-6 text-white" />
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors mt-1" />
                 </div>
-                <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors mt-1" />
-              </div>
-              <h3 className="font-semibold text-gray-900 text-lg mb-1">{org.name}</h3>
-              <div className="flex items-center gap-1 text-sm text-gray-500 mb-4">
-                <Globe className="h-3.5 w-3.5" />
-                {org.domain}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {org.settings?.allowRegistration && (
-                  <Badge variant="outline" className="text-xs">Open registration</Badge>
-                )}
-                {org.settings?.requireApproval && (
-                  <Badge variant="outline" className="text-xs">Requires approval</Badge>
-                )}
-                <Badge variant="outline" className="text-xs capitalize">
-                  Default: {org.settings?.defaultRole || "volunteer"}
-                </Badge>
-              </div>
-              <p className="text-xs text-gray-400 mt-4">
-                Created {new Date(org.createdAt).toLocaleDateString()}
-              </p>
-            </button>
-          ))}
+                <h3 className="font-semibold text-gray-900 text-lg mb-1">{org.name}</h3>
+                <div className="flex items-center gap-1 text-sm text-gray-500 mb-3">
+                  <Globe className="h-3.5 w-3.5" />
+                  {org.domain}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="text-xs flex items-center gap-1">
+                    <TypeIcon className="h-3 w-3" />
+                    {typeConfig.label}
+                  </Badge>
+                  {org.settings?.allowRegistration && (
+                    <Badge variant="outline" className="text-xs">Open registration</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-4">
+                  Created {new Date(org.createdAt).toLocaleDateString()}
+                </p>
+              </button>
+            )
+          })}
         </div>
       )}
     </div>
