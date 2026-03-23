@@ -31,6 +31,13 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
     }
   }
 
+  const demoAccounts = [
+    { email: "admin@gutenberg.org", role: "Admin", password: "change-me-strong-password" },
+    { email: "board@gutenberg.org", role: "Board Member", password: "board123" },
+    { email: "volunteer@gutenberg.org", role: "Volunteer", password: "volunteer123" },
+    { email: "participant@gutenberg.org", role: "Participant", password: "participant123" },
+  ]
+
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="space-y-1">
@@ -102,6 +109,25 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
           </div>
         </form>
 
+        <div className="mt-6 pt-6 border-t">
+          <p className="text-sm text-gray-600 mb-3 text-center">Demo Accounts:</p>
+          <div className="space-y-2">
+            {demoAccounts.map((account, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                size="sm"
+                className="w-full justify-start text-left bg-transparent"
+                onClick={() => { setEmail(account.email); setPassword(account.password) }}
+              >
+                <div className="flex flex-col items-start">
+                  <span className="font-medium">{account.role}</span>
+                  <span className="text-xs text-gray-500">{account.email}</span>
+                </div>
+              </Button>
+            ))}
+          </div>
+        </div>
       </CardContent>
     </Card>
   )

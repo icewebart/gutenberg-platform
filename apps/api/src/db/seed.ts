@@ -47,4 +47,30 @@ export async function ensureSeedData() {
     })
     console.log(`Created admin user: ${adminEmail}`)
   }
+
+  // Seed demo users
+  const demoUsers = [
+    { email: "board@gutenberg.org", password: "board123", name: "Board Member", role: "board_member", department: "Board" },
+    { email: "volunteer@gutenberg.org", password: "volunteer123", name: "Volunteer", role: "volunteer", department: "None" },
+    { email: "participant@gutenberg.org", password: "participant123", name: "Participant", role: "participant", department: "None" },
+  ]
+
+  for (const demo of demoUsers) {
+    const exists = await db.query.users.findFirst({ where: eq(users.email, demo.email) })
+    if (!exists) {
+      const hash = await bcrypt.hash(demo.password, 12)
+      await db.insert(users).values({
+        email: demo.email,
+        passwordHash: hash,
+        name: demo.name,
+        role: demo.role,
+        department: demo.department,
+        organizationId: org.id,
+        permissions: [],
+        isActive: true,
+        isVerified: true,
+      })
+      console.log(`Created demo user: ${demo.email}`)
+    }
+  }
 }
