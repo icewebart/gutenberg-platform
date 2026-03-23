@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { motion } from "framer-motion"
 import {
   Users,
@@ -41,6 +41,23 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
   const { currentOrganization, netzwerkCities } = useMultiTenant()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
+
+  const userMenuRef = useRef<HTMLDivElement>(null)
+  const notifRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false)
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   if (!user || !currentOrganization) return null
 
@@ -113,10 +130,6 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
     return hasPermission(item.permission)
   })
 
-  const handleLogout = () => {
-    logout()
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       {mobileMenuOpen && (
@@ -140,53 +153,80 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div className="hidden lg:block">
               <OrganizationSelector />
             </div>
 
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                3
-              </span>
-            </Button>
+            {/* Notification bell */}
+            <div ref={notifRef} className="relative" style={{ zIndex: 9999 }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative"
+                onClick={() => setNotifOpen(!notifOpen)}
+              >
+                <Bell className="h-5 w-5" />
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                  3
+                </span>
+              </Button>
+              {notifOpen && (
+                <div className="absolute right-0 top-full mt-1 w-80 bg-white rounded-xl shadow-xl border border-gray-200 py-2" style={{ zIndex: 9999 }}>
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-sm font-semibold text-gray-900">Notifications</p>
+                  </div>
+                  {[
+                    { title: "New project assigned", time: "2 min ago", desc: "You were added to Project Alpha" },
+                    { title: "Community reply", time: "1 hour ago", desc: "Someone replied to your post" },
+                    { title: "New volunteer joined", time: "3 hours ago", desc: "Maria joined your organization" },
+                  ].map((n, i) => (
+                    <div key={i} className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0">
+                      <p className="text-sm font-medium text-gray-900">{n.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{n.desc}</p>
+                      <p className="text-xs text-gray-400 mt-1">{n.time}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-            <div className="flex items-center gap-3">
-              <div className="text-right">
+            {/* User menu */}
+            <div ref={userMenuRef} className="relative flex items-center gap-2" style={{ zIndex: 9999 }}>
+              <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium">{user.name}</p>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center justify-end gap-1">
                   <RoleBadge role={user.role} />
                   {userNetzwerkCity && <span className="text-xs text-gray-500 ml-1">• {userNetzwerkCity.name}</span>}
                 </div>
               </div>
-              <div className="relative">
-                <Button variant="ghost" className="flex items-center gap-2 rounded-xl" onClick={() => setUserMenuOpen(!userMenuOpen)}>
-                  <Avatar className="h-8 w-8 border-2 border-blue-200">
-                    <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                    <AvatarFallback>
-                      {user.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-                {userMenuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border py-2 z-50">
-                      <button
-                        onClick={handleLogout}
-                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-                      >
-                        <LogOut className="h-4 w-4" />
-                        Sign Out
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+              <Button
+                variant="ghost"
+                className="p-1 rounded-xl"
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+              >
+                <Avatar className="h-8 w-8 border-2 border-blue-200">
+                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                  <AvatarFallback>
+                    {user.name.split(" ").map((n) => n[0]).join("")}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-200 py-2" style={{ zIndex: 9999 }}>
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                    <p className="text-xs text-gray-500">{user.email}</p>
+                  </div>
+                  <button
+                    onClick={logout}
+                    className="w-full px-4 py-2 mt-1 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

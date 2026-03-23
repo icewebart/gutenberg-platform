@@ -25,11 +25,11 @@ export function OrganizationSelector() {
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-[220px] justify-between rounded-xl bg-transparent overflow-hidden"
+          className="w-[200px] justify-between rounded-xl bg-transparent"
         >
-          <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4" />
-            <span className="truncate">{currentOrganization.name}</span>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Building2 className="h-4 w-4 shrink-0" />
+            <span className="truncate text-sm">{currentOrganization.name}</span>
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
