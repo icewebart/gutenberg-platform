@@ -68,6 +68,12 @@ const config: Config = {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+        field: 'var(--radius-field)',
+        box: 'var(--radius-box)',
+      },
+      fontFamily: {
+        title: ['var(--font-title)', 'sans-serif'],
+        body: ['var(--font-body)', 'sans-serif'],
       },
       keyframes: {
         'accordion-down': {

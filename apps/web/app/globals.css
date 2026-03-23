@@ -37,6 +37,9 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+    --radius-field: 8px;   /* inputs, badges, small chips */
+    --radius-box: 12px;    /* cards, panels, dropdowns */
+    --font-title: var(--font-title);
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
@@ -88,5 +91,38 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-title), var(--font-body), sans-serif;
+  }
+}
+
+@layer components {
+  /* Global button */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-sm;
+    border-radius: var(--radius-field);
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-all duration-200;
+    border-radius: var(--radius-field);
+  }
+
+  /* Global card/box */
+  .box {
+    border-radius: var(--radius-box);
+    @apply bg-white border border-gray-200 shadow-sm;
+  }
+
+  /* Title styles */
+  .title-page {
+    font-family: var(--font-title), sans-serif;
+    @apply text-2xl font-bold text-gray-900 tracking-tight;
+  }
+
+  .title-section {
+    font-family: var(--font-title), sans-serif;
+    @apply text-lg font-semibold text-gray-900;
   }
 }
