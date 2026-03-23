@@ -16,18 +16,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Plus,
   Loader2,
-  LayoutKanban,
+  Kanban,
   List,
   Calendar,
   Clock,
   CheckCircle2,
   Circle,
   AlertCircle,
-  ChevronDown,
   Trash2,
   Award,
   Flag,
-  User2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getAvatarGradient } from "@/lib/avatar-gradient"
@@ -361,7 +359,7 @@ export default function TasksPage() {
                 view === "kanban" ? "bg-white shadow-sm text-gray-900" : "text-gray-400 hover:text-gray-600"
               )}
             >
-              <LayoutKanban className="h-4 w-4" />
+              <Kanban className="h-4 w-4" />
             </button>
             <button
               onClick={() => setView("list")}
