@@ -25,7 +25,7 @@ export function OrganizationSelector() {
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-[200px] justify-between rounded-xl bg-transparent"
+          className="w-[220px] justify-between rounded-xl bg-transparent overflow-hidden"
         >
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
@@ -34,7 +34,7 @@ export function OrganizationSelector() {
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
+      <PopoverContent className="w-[220px] p-0">
         <Command>
           <CommandInput placeholder="Search organizations..." />
           <CommandList>

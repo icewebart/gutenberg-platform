@@ -40,6 +40,7 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
   const { user, logout, hasPermission, hasRole } = useAuth()
   const { currentOrganization, netzwerkCities } = useMultiTenant()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
 
   if (!user || !currentOrganization) return null
 
@@ -159,8 +160,8 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
                   {userNetzwerkCity && <span className="text-xs text-gray-500 ml-1">• {userNetzwerkCity.name}</span>}
                 </div>
               </div>
-              <div className="relative group">
-                <Button variant="ghost" className="flex items-center gap-2 rounded-xl">
+              <div className="relative">
+                <Button variant="ghost" className="flex items-center gap-2 rounded-xl" onClick={() => setUserMenuOpen(!userMenuOpen)}>
                   <Avatar className="h-8 w-8 border-2 border-blue-200">
                     <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
                     <AvatarFallback>
@@ -171,15 +172,20 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
                     </AvatarFallback>
                   </Avatar>
                 </Button>
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border py-2 z-50 hidden group-hover:block">
-                  <button
-                    onClick={handleLogout}
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Sign Out
-                  </button>
-                </div>
+                {userMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setUserMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border py-2 z-50">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Sign Out
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
