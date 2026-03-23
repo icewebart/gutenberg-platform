@@ -22,11 +22,13 @@ export default function Home() {
   }
 
   if (!user) {
-    return showRegistration ? (
-      <RegistrationForm onSwitchToLogin={() => setShowRegistration(false)} />
-    ) : (
+    return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 pt-24 px-4">
-        <LoginForm onSwitchToRegister={() => setShowRegistration(true)} />
+        {showRegistration ? (
+          <RegistrationForm onSwitchToLogin={() => setShowRegistration(false)} />
+        ) : (
+          <LoginForm onSwitchToRegister={() => setShowRegistration(true)} />
+        )}
       </div>
     )
   }
