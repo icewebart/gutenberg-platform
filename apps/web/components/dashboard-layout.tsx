@@ -198,34 +198,20 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
 
             {/* User menu */}
             <div ref={userMenuRef} className="relative flex items-center gap-2" style={{ zIndex: 9999 }}>
-              <div className="hidden sm:flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-1.5">
-                <button
-                  className="p-0 rounded-full"
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                >
-                  <Avatar className="h-8 w-8 border-2 border-blue-200">
-                    <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-bold">
-                      {user.name.split(" ").map((n) => n[0]).join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                </button>
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium leading-tight">{user.name}</p>
-                  <div className="flex items-center gap-1">
-                    <RoleBadge role={user.role} />
-                    {userNetzwerkCity && <span className="text-xs text-gray-500">• {userNetzwerkCity.name}</span>}
-                  </div>
-                </div>
+              {/* Pill: name + badge */}
+              <div className="hidden sm:flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-1.5 h-10">
+                <p className="text-sm font-medium text-gray-900 leading-none">{user.name}</p>
+                <RoleBadge role={user.role} />
+                {userNetzwerkCity && <span className="text-xs text-gray-500">• {userNetzwerkCity.name}</span>}
               </div>
-              {/* Mobile: avatar only */}
+              {/* Avatar button — same style as bell */}
               <button
-                className="sm:hidden p-1 rounded-xl"
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="h-10 w-10 flex items-center justify-center border border-gray-200 rounded-xl overflow-hidden hover:bg-gray-50 transition-colors"
               >
-                <Avatar className="h-8 w-8 border-2 border-blue-200">
-                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-bold">
+                <Avatar className="h-full w-full rounded-none">
+                  <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} className="object-cover" />
+                  <AvatarFallback className="rounded-none bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-bold">
                     {user.name.split(" ").map((n) => n[0]).join("")}
                   </AvatarFallback>
                 </Avatar>
