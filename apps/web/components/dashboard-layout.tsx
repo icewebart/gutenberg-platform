@@ -198,25 +198,38 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
 
             {/* User menu */}
             <div ref={userMenuRef} className="relative flex items-center gap-2" style={{ zIndex: 9999 }}>
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium">{user.name}</p>
-                <div className="flex items-center justify-end gap-1">
-                  <RoleBadge role={user.role} />
-                  {userNetzwerkCity && <span className="text-xs text-gray-500 ml-1">• {userNetzwerkCity.name}</span>}
+              <div className="hidden sm:flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-1.5">
+                <button
+                  className="p-0 rounded-full"
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                >
+                  <Avatar className="h-8 w-8 border-2 border-blue-200">
+                    <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-bold">
+                      {user.name.split(" ").map((n) => n[0]).join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium leading-tight">{user.name}</p>
+                  <div className="flex items-center gap-1">
+                    <RoleBadge role={user.role} />
+                    {userNetzwerkCity && <span className="text-xs text-gray-500">• {userNetzwerkCity.name}</span>}
+                  </div>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                className="p-1 rounded-xl"
+              {/* Mobile: avatar only */}
+              <button
+                className="sm:hidden p-1 rounded-xl"
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
               >
                 <Avatar className="h-8 w-8 border-2 border-blue-200">
                   <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                  <AvatarFallback>
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-bold">
                     {user.name.split(" ").map((n) => n[0]).join("")}
                   </AvatarFallback>
                 </Avatar>
-              </Button>
+              </button>
               {userMenuOpen && (
                 <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-200 py-2" style={{ zIndex: 9999 }}>
                   <div className="px-4 py-2 border-b border-gray-100">
