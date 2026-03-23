@@ -161,9 +161,9 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
             {/* Notification bell */}
             <div ref={notifRef} className="relative" style={{ zIndex: 9999 }}>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
-                className="relative"
+                className="relative border border-gray-200 rounded-xl"
                 onClick={() => setNotifOpen(!notifOpen)}
               >
                 <Bell className="h-5 w-5" />
@@ -172,19 +172,24 @@ export function DashboardLayout({ children, activeTab, onTabChange }: DashboardL
                 </span>
               </Button>
               {notifOpen && (
-                <div className="absolute right-0 top-full mt-1 w-80 bg-white rounded-xl shadow-xl border border-gray-200 py-2" style={{ zIndex: 9999 }}>
-                  <div className="px-4 py-2 border-b border-gray-100">
+                <div className="absolute right-0 top-full mt-1 w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden" style={{ zIndex: 9999 }}>
+                  <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                     <p className="text-sm font-semibold text-gray-900">Notifications</p>
+                    <span className="text-xs text-blue-600 cursor-pointer hover:underline">Mark all as read</span>
                   </div>
                   {[
-                    { title: "New project assigned", time: "2 min ago", desc: "You were added to Project Alpha" },
-                    { title: "Community reply", time: "1 hour ago", desc: "Someone replied to your post" },
-                    { title: "New volunteer joined", time: "3 hours ago", desc: "Maria joined your organization" },
+                    { title: "New project assigned", time: "2 min ago", desc: "You were added to Project Alpha", seen: false },
+                    { title: "Community reply", time: "1 hour ago", desc: "Someone replied to your post", seen: false },
+                    { title: "New volunteer joined", time: "3 hours ago", desc: "Maria joined your organization", seen: false },
+                    { title: "Course completed", time: "Yesterday", desc: "You completed Introduction to Gutenberg", seen: true },
                   ].map((n, i) => (
-                    <div key={i} className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0">
-                      <p className="text-sm font-medium text-gray-900">{n.title}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{n.desc}</p>
-                      <p className="text-xs text-gray-400 mt-1">{n.time}</p>
+                    <div key={i} className={cn("px-4 py-3 cursor-pointer border-b border-gray-100 last:border-0 flex gap-3 items-start", n.seen ? "hover:bg-gray-50" : "bg-blue-50 hover:bg-blue-100")}>
+                      <div className={cn("mt-1.5 h-2 w-2 rounded-full shrink-0", n.seen ? "bg-transparent" : "bg-blue-500")} />
+                      <div>
+                        <p className={cn("text-sm", n.seen ? "font-normal text-gray-700" : "font-medium text-gray-900")}>{n.title}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{n.desc}</p>
+                        <p className="text-xs text-gray-400 mt-1">{n.time}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
