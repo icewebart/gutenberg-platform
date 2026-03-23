@@ -13,15 +13,14 @@ import {
   Store,
   GraduationCap,
   MessageCircle,
-  Settings,
   Bell,
   Menu,
   X,
   LogOut,
   Building2,
-  MapPin,
   Activity,
   UserCog,
+  Award,
 } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -92,7 +91,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           ...baseItems,
           { href: "/members", label: "Members", icon: Users, permission: "manage_volunteers" },
           { href: "/projects", label: "Projects", icon: FolderOpen, permission: "view_projects" },
-          { href: "/netzwerk", label: "Netzwerk Cities", icon: MapPin, permission: "manage_netzwerk" },
           { href: "/community", label: "Community", icon: MessageSquare, permission: "view_community" },
           { href: "/learning", label: "Learning Center", icon: GraduationCap, permission: "view_learning_center" },
           { href: "/store", label: "Store", icon: Store, permission: "view_store" },
@@ -105,7 +103,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/organizations", label: "Organizations", icon: Building2, permission: "*" },
           { href: "/members", label: "Members", icon: Users, permission: "*" },
           { href: "/projects", label: "Projects", icon: FolderOpen, permission: "*" },
-          { href: "/netzwerk", label: "Netzwerk Cities", icon: MapPin, permission: "*" },
           { href: "/community", label: "Community", icon: MessageSquare, permission: "*" },
           { href: "/learning", label: "Learning Center", icon: GraduationCap, permission: "*" },
           { href: "/store", label: "Store", icon: Store, permission: "*" },
@@ -152,6 +149,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="hidden lg:block">
               <OrganizationSelector />
             </div>
+
+            {/* Points */}
+            {user.gamification && (
+              <div className="hidden sm:flex items-center gap-1.5 border border-gray-200 rounded-xl px-3 h-10 bg-white">
+                <Award className="h-4 w-4 text-yellow-500" />
+                <span className="text-sm font-semibold text-gray-800">
+                  {((user.gamification as any).points ?? 0).toLocaleString()}
+                </span>
+                <span className="text-xs text-gray-400">pts</span>
+              </div>
+            )}
 
             {/* Notification bell */}
             <div ref={notifRef} className="relative" style={{ zIndex: 9999 }}>
