@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Check, ChevronsUpDown, Building2, Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -14,6 +15,7 @@ import { useAuth } from "./auth-context"
 export function OrganizationSelector() {
   const { currentOrganization, organizations, switchOrganization } = useMultiTenant()
   const { hasRole } = useAuth()
+  const router = useRouter()
   const [open, setOpen] = useState(false)
 
   if (!currentOrganization) return null
@@ -64,7 +66,7 @@ export function OrganizationSelector() {
                 <CommandGroup>
                   <CommandItem
                     onSelect={() => {
-                      // Handle create new organization
+                      router.push("/organizations")
                       setOpen(false)
                     }}
                   >
