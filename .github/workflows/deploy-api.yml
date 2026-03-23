@@ -42,6 +42,7 @@ jobs:
             cd /www/wwwroot/gutenberg-platform
             git pull origin main
             pnpm install --frozen-lockfile
+            pnpm --filter shared build
             pnpm --filter api db:migrate
             pnpm --filter api build
             pm2 restart gutenberg-api --update-env
