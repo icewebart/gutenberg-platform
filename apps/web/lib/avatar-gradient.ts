@@ -13,7 +13,8 @@ const GRADIENTS = [
 ]
 
 /** Returns a Tailwind gradient className deterministically based on the user id */
-export function getAvatarGradient(id: string): string {
+export function getAvatarGradient(id?: string | null): string {
+  if (!id) return GRADIENTS[0]
   let hash = 0
   for (let i = 0; i < id.length; i++) {
     hash = (hash * 31 + id.charCodeAt(i)) >>> 0
