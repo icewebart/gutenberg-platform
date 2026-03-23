@@ -49,6 +49,12 @@ export async function ensureSeedData() {
   }
 
   // Seed demo users
+  const rolePermissions: Record<string, string[]> = {
+    board_member: ["manage_volunteers", "view_projects", "manage_netzwerk", "view_community", "view_learning_center", "view_store"],
+    volunteer: ["view_projects", "view_community", "view_learning_center", "view_store"],
+    participant: ["view_assigned_projects", "view_community", "view_learning_center"],
+  }
+
   const demoUsers = [
     { email: "board@gutenberg.org", password: "board123", name: "Board Member", role: "board_member", department: "Board" },
     { email: "volunteer@gutenberg.org", password: "volunteer123", name: "Volunteer", role: "volunteer", department: "None" },
@@ -66,11 +72,16 @@ export async function ensureSeedData() {
         role: demo.role,
         department: demo.department,
         organizationId: org.id,
-        permissions: [],
+        permissions: rolePermissions[demo.role] ?? [],
         isActive: true,
         isVerified: true,
       })
       console.log(`Created demo user: ${demo.email}`)
+    } else {
+      await db.update(users)
+        .set({ permissions: rolePermissions[demo.role] ?? [] })
+        .where(eq(users.email, demo.email))
+      console.log(`Updated permissions for: ${demo.email}`)
     }
   }
 }
