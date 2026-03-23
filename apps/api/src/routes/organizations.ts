@@ -46,6 +46,46 @@ router.get("/:id/cities", requireAuth, async (req: AuthRequest, res) => {
   }
 })
 
+// PATCH /organizations/:id (admin only)
+router.patch("/:id", requireAuth, requireRole("admin"), async (req: AuthRequest, res) => {
+  try {
+    const { name, domain, settings } = req.body
+    const [updated] = await db
+      .update(organizations)
+      .set({
+        ...(name ? { name } : {}),
+        ...(domain ? { domain } : {}),
+        ...(settings ? { settings } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(organizations.id, req.params.id))
+      .returning()
+    if (!updated) {
+      res.status(404).json({ error: "Organization not found" })
+      return
+    }
+    res.json(updated)
+  } catch (err: any) {
+    if (err.code === "23505") {
+      res.status(409).json({ error: "Domain already in use" })
+      return
+    }
+    console.error(err)
+    res.status(500).json({ error: "Internal server error" })
+  }
+})
+
+// DELETE /organizations/:id (admin only)
+router.delete("/:id", requireAuth, requireRole("admin"), async (req: AuthRequest, res) => {
+  try {
+    await db.delete(organizations).where(eq(organizations.id, req.params.id))
+    res.status(204).send()
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: "Internal server error" })
+  }
+})
+
 // POST /organizations (admin only)
 router.post("/", requireAuth, requireRole("admin"), async (req: AuthRequest, res) => {
   try {
