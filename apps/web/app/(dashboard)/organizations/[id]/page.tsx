@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Building2, Globe, Loader2, Save, Users, GraduationCap, Network } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { getAvatarGradient } from "@/lib/avatar-gradient"
 
 interface Org {
   id: string
@@ -285,7 +286,7 @@ export default function OrganizationDetailPage() {
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
                               <AvatarImage src={member.avatar || "/placeholder.svg"} />
-                              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-bold">
+                              <AvatarFallback className={`bg-gradient-to-br ${getAvatarGradient(member.id)} text-white text-xs font-bold`}>
                                 {member.name.split(" ").map((n) => n[0]).join("")}
                               </AvatarFallback>
                             </Avatar>

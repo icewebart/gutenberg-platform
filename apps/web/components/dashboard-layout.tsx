@@ -21,6 +21,7 @@ import {
   Activity,
   UserCog,
   Award,
+  CheckSquare,
 } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -31,6 +32,7 @@ import { useAuth } from "./auth-context"
 import { useMultiTenant } from "./multi-tenant-context"
 import { RoleBadge } from "./role-badge"
 import { OrganizationSelector } from "./organization-selector"
+import { getAvatarGradient } from "@/lib/avatar-gradient"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -71,6 +73,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       case "volunteer":
         return [
           ...baseItems,
+          { href: "/tasks", label: "Tasks", icon: CheckSquare, permission: null },
           { href: "/projects", label: "Projects", icon: FolderOpen, permission: "view_projects" },
           { href: "/community", label: "Community", icon: MessageSquare, permission: "view_community" },
           { href: "/learning", label: "Learning Center", icon: GraduationCap, permission: "view_learning_center" },
@@ -90,6 +93,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         return [
           ...baseItems,
           { href: "/members", label: "Members", icon: Users, permission: "manage_volunteers" },
+          { href: "/tasks", label: "Tasks", icon: CheckSquare, permission: null },
           { href: "/projects", label: "Projects", icon: FolderOpen, permission: "view_projects" },
           { href: "/community", label: "Community", icon: MessageSquare, permission: "view_community" },
           { href: "/learning", label: "Learning Center", icon: GraduationCap, permission: "view_learning_center" },
@@ -102,6 +106,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           ...baseItems,
           { href: "/organizations", label: "Organizations", icon: Building2, permission: "*" },
           { href: "/members", label: "Members", icon: Users, permission: "*" },
+          { href: "/tasks", label: "Tasks", icon: CheckSquare, permission: "*" },
           { href: "/projects", label: "Projects", icon: FolderOpen, permission: "*" },
           { href: "/community", label: "Community", icon: MessageSquare, permission: "*" },
           { href: "/learning", label: "Learning Center", icon: GraduationCap, permission: "*" },
@@ -214,7 +219,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               >
                 <Avatar className="h-full w-full rounded-none">
                   <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} className="object-cover" />
-                  <AvatarFallback className="rounded-none bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-bold">
+                  <AvatarFallback className={`rounded-none bg-gradient-to-br ${getAvatarGradient(user.id)} text-white text-xs font-bold`}>
                     {user.name.split(" ").map((n) => n[0]).join("")}
                   </AvatarFallback>
                 </Avatar>
@@ -288,8 +293,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </div>
 
-        <aside className="hidden w-64 border-r bg-white lg:block">
-          <nav className="p-4">
+        <aside className="hidden w-64 border-r bg-white lg:flex lg:flex-col" style={{ minHeight: "calc(100vh - 64px)" }}>
+          <nav className="flex-1 p-4">
             <div className="space-y-2">
               {navigationItems.map((item) => (
                 <Link

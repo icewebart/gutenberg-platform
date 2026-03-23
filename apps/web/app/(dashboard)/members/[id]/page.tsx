@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Award, Mail, Building2, Loader2, Shield, CheckCircle, XCircle } from "lucide-react"
+import { getAvatarGradient } from "@/lib/avatar-gradient"
 
 interface Member {
   id: string
@@ -124,7 +125,7 @@ export default function MemberDetailPage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
             <Avatar className="h-20 w-20 border-2 border-blue-200">
               <AvatarImage src={member.avatar || "/placeholder.svg"} alt={member.name} />
-              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xl font-bold">
+              <AvatarFallback className={`bg-gradient-to-br ${getAvatarGradient(member.id)} text-white text-xl font-bold`}>
                 {initials}
               </AvatarFallback>
             </Avatar>

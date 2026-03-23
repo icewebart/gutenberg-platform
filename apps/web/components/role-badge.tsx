@@ -14,31 +14,31 @@ export function RoleBadge({ role, size = "sm" }: RoleBadgeProps) {
       case "admin":
         return {
           label: "Admin",
-          color: "bg-red-100 text-red-800 border-red-200",
+          color: "bg-red-100 text-red-800 border-red-200 hover:bg-red-100",
           icon: Crown,
         }
       case "board_member":
         return {
           label: "Board Member",
-          color: "bg-purple-100 text-purple-800 border-purple-200",
+          color: "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-100",
           icon: Shield,
         }
       case "volunteer":
         return {
           label: "Volunteer",
-          color: "bg-blue-100 text-blue-800 border-blue-200",
+          color: "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100",
           icon: Users,
         }
       case "participant":
         return {
           label: "Participant",
-          color: "bg-green-100 text-green-800 border-green-200",
+          color: "bg-green-100 text-green-800 border-green-200 hover:bg-green-100",
           icon: User,
         }
       default:
         return {
           label: "Unknown",
-          color: "bg-gray-100 text-gray-800 border-gray-200",
+          color: "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100",
           icon: User,
         }
     }

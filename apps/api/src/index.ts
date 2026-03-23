@@ -13,6 +13,7 @@ import projectRoutes from "./routes/projects"
 import communityRoutes from "./routes/community"
 import courseRoutes from "./routes/courses"
 import chatRoutes from "./routes/chat"
+import taskRoutes from "./routes/tasks"
 
 const app = express()
 const PORT = process.env.PORT ?? 4000
@@ -38,6 +39,7 @@ app.use("/projects", projectRoutes)
 app.use("/community", communityRoutes)
 app.use("/courses", courseRoutes)
 app.use("/conversations", chatRoutes)
+app.use("/tasks", taskRoutes)
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 

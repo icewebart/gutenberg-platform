@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useAuth } from "@/components/auth-context"
 import { Award, UserPlus, Loader2 } from "lucide-react"
 import { MemberManagementTabs } from "../members/member-management-tabs"
+import { getAvatarGradient } from "@/lib/avatar-gradient"
 
 const DEPARTMENTS = ["HR", "PR", "FR", "AB", "Board", "Alumni"]
 const AVAILABLE_YEARS = [2026, 2025, 2024, 2023]
@@ -167,7 +168,7 @@ export function VolunteersManagement() {
                     <div className="flex items-center gap-3">
                       <Avatar>
                         <AvatarImage src={member.avatar || "/placeholder.svg"} alt={member.name} />
-                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs font-bold">
+                        <AvatarFallback className={`bg-gradient-to-br ${getAvatarGradient(member.id)} text-white text-xs font-bold`}>
                           {member.name.split(" ").map((n) => n[0]).join("")}
                         </AvatarFallback>
                       </Avatar>

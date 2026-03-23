@@ -44,6 +44,8 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
   phone: text("phone"),
   role: text("role").notNull().default("volunteer"),
   department: text("department").notNull().default("None"),
@@ -199,6 +201,30 @@ export const chatMessages = pgTable("chat_messages", {
   content: text("content").notNull(),
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+})
+
+// ─── Tasks ────────────────────────────────────────────────────────────────────
+
+export const tasks = pgTable("tasks", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  status: text("status").notNull().default("todo"), // todo | in_progress | done
+  priority: text("priority").notNull().default("medium"), // low | medium | high
+  deadline: timestamp("deadline"),
+  points: integer("points").notNull().default(0),
+  assignedTo: uuid("assigned_to").references(() => users.id, { onDelete: "set null" }),
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => users.id),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+  completedAt: timestamp("completed_at"),
+  pointsAwarded: boolean("points_awarded").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 })
 
 // ─── Invitations ─────────────────────────────────────────────────────────────
