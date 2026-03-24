@@ -82,6 +82,20 @@ export const createProjectSchema = z.object({
   memberIds: z.array(z.string().uuid()).optional(),
   organizationId: z.string().uuid(),
   netzwerkCityId: z.string().uuid().optional(),
+  // Registration / Stripe
+  registrationEnabled: z.boolean().optional(),
+  applicationFee: z.number().int().min(0).optional(),
+  autoApprove: z.boolean().optional(),
+  formFields: z.array(
+    z.object({
+      id: z.string(),
+      type: z.enum(["text", "email", "phone", "textarea", "select", "checkbox"]),
+      label: z.string(),
+      required: z.boolean(),
+      options: z.array(z.string()),
+    })
+  ).optional(),
+  stripeProductId: z.string().optional(),
 })
 
 export const updateProjectSchema = createProjectSchema.partial()

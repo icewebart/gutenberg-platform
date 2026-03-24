@@ -253,11 +253,6 @@ export default function ApplyPage() {
                   Registration fee: €{formatFee(project.applicationFee)}
                 </div>
               )}
-              {project.applicationFee === 0 && (
-                <Badge className="bg-green-50 text-green-700 border-green-200 border text-xs">
-                  Free
-                </Badge>
-              )}
             </div>
           </CardContent>
         </Card>
