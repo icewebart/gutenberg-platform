@@ -27,7 +27,10 @@
       "Bash(ssh-add ~/.ssh/id_ed25519_new)",
       "Bash(git branch:*)",
       "Bash(pnpm --filter web build)",
-      "Bash(ls /Users/mark/gutenberg-platform/apps/web/app/\\\\\\(dashboard\\\\\\)/settings/)"
+      "Bash(ls /Users/mark/gutenberg-platform/apps/web/app/\\\\\\(dashboard\\\\\\)/settings/)",
+      "Bash(node -e \"const lucide = require\\(''./apps/web/node_modules/lucide-react''\\); console.log\\(!!lucide.CheckSquare, !!lucide.SquareCheck\\)\")",
+      "Bash(ls /Users/mark/gutenberg-platform/apps/web/app/\\\\\\(dashboard\\\\\\)/)",
+      "Bash(grep -l \"LayoutKanban\\\\|CheckSquare\\\\|CheckCircle2\\\\|User2\\\\b\" /Users/mark/gutenberg-platform/apps/web/node_modules/lucide-react/dist/esm/icons/*.js)"
     ]
   }
 }

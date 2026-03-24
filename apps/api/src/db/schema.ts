@@ -106,6 +106,17 @@ export const projects = pgTable("projects", {
   requirements: jsonb("requirements").notNull().default([]),
   materials: jsonb("materials").notNull().default([]),
   images: jsonb("images").notNull().default([]),
+  category: text("category").notNull().default("education"),
+  scale: text("scale").notNull().default("local"),
+  funding: text("funding").notNull().default("self_funded"),
+  goals: jsonb("goals").notNull().default([]),
+  kpis: jsonb("kpis").notNull().default([]),
+  partnerOrganizations: jsonb("partner_organizations").notNull().default([]),
+  budget: integer("budget"),
+  currency: text("currency").default("EUR"),
+  registrationLink: text("registration_link"),
+  expectedParticipants: integer("expected_participants"),
+  visibility: text("visibility").notNull().default("internal"),
   createdBy: uuid("created_by")
     .notNull()
     .references(() => users.id),

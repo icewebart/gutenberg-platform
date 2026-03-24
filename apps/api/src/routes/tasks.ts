@@ -8,13 +8,18 @@ const router = Router()
 // GET /tasks?organizationId=&myTasks=true
 router.get("/", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { organizationId, myTasks } = req.query as {
+    const { organizationId, myTasks, projectId } = req.query as {
       organizationId?: string
       myTasks?: string
+      projectId?: string
     }
 
+    const conditions = []
+    if (organizationId) conditions.push(eq(tasks.organizationId, organizationId))
+    if (projectId) conditions.push(eq(tasks.projectId, projectId))
+
     let allTasks = await db.query.tasks.findMany({
-      where: organizationId ? eq(tasks.organizationId, organizationId) : undefined,
+      where: conditions.length ? and(...conditions) : undefined,
       orderBy: (t, { desc }) => [desc(t.createdAt)],
     })
 
