@@ -225,9 +225,9 @@ export default function CreateProjectPage() {
   if (!user || !currentOrganization) return null
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Sticky top bar */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Page header */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <Link href="/projects">
             <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl">
@@ -236,7 +236,7 @@ export default function CreateProjectPage() {
             </Button>
           </Link>
           <span className="text-gray-300">|</span>
-          <h1 className="text-base font-semibold text-gray-900">New Project</h1>
+          <h1 className="text-xl font-bold text-gray-900">New Project</h1>
         </div>
         <div className="flex gap-2">
           <Link href="/projects">
@@ -251,13 +251,13 @@ export default function CreateProjectPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
+        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
           {error}
         </div>
       )}
 
       {/* Main layout */}
-      <div className="max-w-6xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* LEFT — main form */}
         <div className="lg:col-span-2 space-y-6">
 
@@ -712,7 +712,7 @@ export default function CreateProjectPage() {
 
         {/* RIGHT sidebar */}
         <div className="space-y-4">
-          <Card className="rounded-2xl border-gray-200 sticky top-20">
+          <Card className="rounded-2xl border-gray-200 sticky top-4">
             <CardContent className="pt-5 space-y-5">
               <div>
                 <Label className="text-sm font-medium">Status</Label>
