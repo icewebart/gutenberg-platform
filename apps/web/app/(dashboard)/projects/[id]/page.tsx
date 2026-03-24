@@ -34,6 +34,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Switch } from "@/components/ui/switch"
 import { useAuth } from "@/components/auth-context"
 import { getAvatarGradient } from "@/lib/avatar-gradient"
 
@@ -81,6 +82,10 @@ interface ApiProject {
   budget?: number
   currency?: string
   registrationLink?: string
+  registrationEnabled?: boolean
+  applicationFee?: number | null
+  autoApprove?: boolean
+  formFields?: unknown[]
   createdBy: string
   createdAt: string
   updatedAt: string
@@ -152,6 +157,8 @@ export default function ProjectDetailPage() {
   const [applications, setApplications] = useState<Application[]>([])
   const [appsLoading, setAppsLoading] = useState(false)
   const [copiedUrl, setCopiedUrl] = useState(false)
+  const [regEnabled, setRegEnabled] = useState(false)
+  const [regToggling, setRegToggling] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -159,6 +166,7 @@ export default function ProjectDetailPage() {
       .then((r) => r.json())
       .then(async (p: ApiProject) => {
         setProject(p)
+        setRegEnabled(p.registrationEnabled ?? false)
         // Fetch member user details
         if (p.members?.length) {
           const userRes = await fetch(`/api/bff/users`)
@@ -204,6 +212,25 @@ export default function ProjectDetailPage() {
     if (res.ok) {
       const updated = await res.json()
       setApplications((prev) => prev.map((a) => (a.id === appId ? updated : a)))
+    }
+  }
+
+  const handleToggleRegistration = async (value: boolean) => {
+    setRegToggling(true)
+    try {
+      const res = await fetch(`/api/bff/projects/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registrationEnabled: value }),
+      })
+      if (res.ok) {
+        setRegEnabled(value)
+        setProject((prev) => prev ? { ...prev, registrationEnabled: value } : prev)
+      }
+    } catch {
+      // revert on error
+    } finally {
+      setRegToggling(false)
     }
   }
 
@@ -588,27 +615,79 @@ export default function ProjectDetailPage() {
         {/* APPLICATIONS tab — admin/board_member only */}
         {canEdit && (
           <TabsContent value="applications" className="mt-4 space-y-4">
-            {/* Public apply URL */}
+
+            {/* Registration status card */}
             <Card className="rounded-2xl border-gray-200">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Link2 className="h-4 w-4 text-purple-500" />
-                  Public Application URL
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
-                  <span className="flex-1 font-mono text-sm text-gray-600 truncate">{applyUrl}</span>
-                  <button
-                    onClick={copyApplyUrl}
-                    className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded flex-shrink-0"
-                  >
-                    {copiedUrl ? (
-                      <Check className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </button>
+              <CardContent className="pt-5 space-y-4">
+                {/* Toggle row */}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <p className="text-sm font-semibold text-gray-900">Applications</p>
+                      <Badge
+                        className={`text-xs border pointer-events-none select-none ${
+                          regEnabled
+                            ? "bg-green-50 text-green-700 border-green-200"
+                            : "bg-gray-100 text-gray-500 border-gray-200"
+                        }`}
+                      >
+                        {regEnabled ? "Open" : "Closed"}
+                      </Badge>
+                      {project.applicationFee != null && (
+                        <Badge className="text-xs border bg-purple-50 text-purple-700 border-purple-200 pointer-events-none select-none">
+                          {project.applicationFee === 0
+                            ? "Free"
+                            : `€${(project.applicationFee / 100).toFixed(2)}`}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {regEnabled
+                        ? "The public form is live. New applications can be submitted."
+                        : "The public form is hidden. No new applications will be accepted."}
+                    </p>
+                  </div>
+
+                  {project.applicationFee != null ? (
+                    <Switch
+                      checked={regEnabled}
+                      onCheckedChange={handleToggleRegistration}
+                      disabled={regToggling}
+                      className="data-[state=checked]:bg-green-500"
+                    />
+                  ) : (
+                    <div className="text-right shrink-0">
+                      <p className="text-xs text-amber-600 font-medium">Fee not set</p>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="text-xs text-purple-600 p-0 h-auto"
+                        onClick={() => router.push(`/projects/create?edit=${project.id}`)}
+                      >
+                        Configure in Edit Project →
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Apply URL */}
+                <div className="border-t pt-4">
+                  <p className="text-xs text-gray-500 mb-1.5 flex items-center gap-1.5">
+                    <Link2 className="h-3.5 w-3.5" /> Public application link
+                  </p>
+                  <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                    <span className="flex-1 font-mono text-sm text-gray-600 truncate">{applyUrl}</span>
+                    <button
+                      onClick={copyApplyUrl}
+                      className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded flex-shrink-0"
+                    >
+                      {copiedUrl ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
