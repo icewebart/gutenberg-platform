@@ -57,6 +57,8 @@ export default function OrganizationDetailPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState("")
+  const [saveSuccess, setSaveSuccess] = useState(false)
 
   const [editName, setEditName] = useState("")
   const [editDomain, setEditDomain] = useState("")
@@ -92,6 +94,8 @@ export default function OrganizationDetailPage() {
 
   const handleSaveDetails = async () => {
     setSaving(true)
+    setSaveError("")
+    setSaveSuccess(false)
     try {
       const res = await fetch(`/api/bff/organizations/${id}`, {
         method: "PATCH",
@@ -103,7 +107,17 @@ export default function OrganizationDetailPage() {
           settings: { allowRegistration: editAllowReg, requireApproval: editRequireApproval, defaultRole: editDefaultRole },
         }),
       })
-      if (res.ok) setOrg(await res.json())
+      if (res.ok) {
+        const updated = await res.json()
+        setOrg(updated)
+        setSaveSuccess(true)
+        setTimeout(() => setSaveSuccess(false), 3000)
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setSaveError(err?.error || `Error ${res.status}: Failed to save changes.`)
+      }
+    } catch {
+      setSaveError("Network error. Please check your connection and try again.")
     } finally {
       setSaving(false)
     }
@@ -249,11 +263,21 @@ export default function OrganizationDetailPage() {
                   </div>
                 ))}
               </div>
+              {saveError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
+                  {saveError}
+                </div>
+              )}
               {isAdmin && (
-                <Button onClick={handleSaveDetails} disabled={saving} className="btn-primary">
-                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  Save Changes
-                </Button>
+                <div className="flex items-center gap-3">
+                  <Button onClick={handleSaveDetails} disabled={saving} className="btn-primary">
+                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    {saving ? "Saving…" : "Save Changes"}
+                  </Button>
+                  {saveSuccess && (
+                    <span className="text-sm text-green-600 font-medium">✓ Saved successfully</span>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
