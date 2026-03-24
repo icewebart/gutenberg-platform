@@ -3,7 +3,7 @@
 export const runtime = "edge"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Plus, X, Loader2, ImageIcon, Globe, Lock, ToggleLeft, ToggleRight, Trash2 } from "lucide-react"
 import Link from "next/link"
 
@@ -107,11 +107,14 @@ function memberInitials(m: Member) {
 
 export default function CreateProjectPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const editId = searchParams.get("edit") // present when editing
   const { user } = useAuth()
   const { currentOrganization } = useMultiTenant()
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [loadingEdit, setLoadingEdit] = useState(!!editId)
   const [members, setMembers] = useState<Member[]>([])
   const [memberSearch, setMemberSearch] = useState("")
 
@@ -159,6 +162,46 @@ export default function CreateProjectPage() {
       .then((data) => setMembers(Array.isArray(data) ? data : []))
       .catch(() => {})
   }, [currentOrganization?.id, user?.role])
+
+  // Load existing project when editing
+  useEffect(() => {
+    if (!editId) return
+    setLoadingEdit(true)
+    fetch(`/api/bff/projects/${editId}`)
+      .then((r) => r.json())
+      .then((p) => {
+        setTitle(p.title ?? "")
+        setShortDescription(p.shortDescription ?? "")
+        setLongDescription(p.longDescription ?? "")
+        setImageUrl(p.imageUrl ?? "")
+        setStatus(p.status ?? "draft")
+        setVisibility(p.visibility ?? "internal")
+        setStartDate(p.startDate ?? "")
+        setEndDate(p.endDate ?? "")
+        setLocation(p.location ?? "")
+        setScale(p.scale ?? "local")
+        setProjectType(p.projectType ?? "workshop")
+        setCategory(p.category ?? "education")
+        setFunding(p.funding ?? "self_funded")
+        setProjectManagerId(p.projectManagerId ?? "")
+        setMemberIds(p.members?.map((m: { userId: string }) => m.userId) ?? [])
+        setMaxParticipants(p.maxParticipants?.toString() ?? "")
+        setExpectedParticipants(p.expectedParticipants?.toString() ?? "")
+        setPointsReward(p.pointsReward?.toString() ?? "0")
+        setBudget(p.budget?.toString() ?? "")
+        setCurrency(p.currency ?? "EUR")
+        setRegistrationLink(p.registrationLink ?? "")
+        setGoals(p.goals?.length ? p.goals : [""])
+        setKpis(p.kpis?.length ? p.kpis : [""])
+        setPartnerOrgs(p.partnerOrganizations?.length ? p.partnerOrganizations : [""])
+        setRegistrationEnabled(p.registrationEnabled ?? false)
+        setApplicationFee(p.applicationFee ? (p.applicationFee / 100).toString() : "0")
+        setAutoApprove(p.autoApprove ?? false)
+        setFormFields(p.formFields ?? [])
+      })
+      .catch(() => {})
+      .finally(() => setLoadingEdit(false))
+  }, [editId])
 
   const filteredMembers = members.filter((m) =>
     memberDisplayName(m).toLowerCase().includes(memberSearch.toLowerCase()) ||
@@ -247,20 +290,23 @@ export default function CreateProjectPage() {
         })),
       }
 
-      const res = await fetch("/api/bff/projects", {
-        method: "POST",
+      const url = editId ? `/api/bff/projects/${editId}` : "/api/bff/projects"
+      const method = editId ? "PATCH" : "POST"
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        setError(err?.error || "Failed to create project.")
+        setError(err?.error || `Failed to ${editId ? "update" : "create"} project.`)
         return
       }
 
       const project = await res.json()
-      router.push(`/projects/${project.id}`)
+      router.push(`/projects/${editId ?? project.id}`)
     } catch {
       setError("An unexpected error occurred.")
     } finally {
@@ -270,27 +316,37 @@ export default function CreateProjectPage() {
 
   if (!user || !currentOrganization) return null
 
+  if (loadingEdit) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
+      </div>
+    )
+  }
+
+  const backHref = editId ? `/projects/${editId}` : "/projects"
+
   return (
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <Link href="/projects">
+          <Link href={backHref}>
             <Button variant="ghost" size="sm" className="gap-1.5 rounded-xl">
               <ArrowLeft className="h-4 w-4" />
-              Projects
+              {editId ? "Project" : "Projects"}
             </Button>
           </Link>
           <span className="text-gray-300">|</span>
-          <h1 className="text-xl font-bold text-gray-900">New Project</h1>
+          <h1 className="text-xl font-bold text-gray-900">{editId ? "Edit Project" : "New Project"}</h1>
         </div>
         <div className="flex gap-2">
-          <Link href="/projects">
+          <Link href={backHref}>
             <Button variant="outline" className="rounded-xl bg-transparent">Cancel</Button>
           </Link>
           <Button onClick={handleSave} disabled={saving} className="rounded-xl gap-2">
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {saving ? "Saving…" : "Save Project"}
+            {saving ? "Saving…" : editId ? "Update Project" : "Save Project"}
           </Button>
         </div>
       </div>
@@ -974,9 +1030,9 @@ export default function CreateProjectPage() {
               <div className="border-t pt-4">
                 <Button onClick={handleSave} disabled={saving} className="w-full rounded-xl gap-2">
                   {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {saving ? "Saving…" : "Save Project"}
+                  {saving ? "Saving…" : editId ? "Update Project" : "Save Project"}
                 </Button>
-                <Link href="/projects">
+                <Link href={backHref}>
                   <Button variant="ghost" className="w-full mt-2 rounded-xl">Cancel</Button>
                 </Link>
               </div>
