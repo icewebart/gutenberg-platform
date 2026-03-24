@@ -122,6 +122,11 @@ export const projects = pgTable("projects", {
     .references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  registrationEnabled: boolean("registration_enabled").notNull().default(false),
+  applicationFee: integer("application_fee").notNull().default(0),
+  autoApprove: boolean("auto_approve").notNull().default(false),
+  formFields: jsonb("form_fields").notNull().default([]),
+  stripeProductId: text("stripe_product_id"),
 })
 
 export const projectMembers = pgTable("project_members", {
@@ -253,5 +258,26 @@ export const invitations = pgTable("invitations", {
     .references(() => users.id),
   expiresAt: timestamp("expires_at").notNull(),
   usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+})
+
+// ─── Project Applications ─────────────────────────────────────────────────────
+
+export const projectApplications = pgTable("project_applications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  email: text("email").notNull(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  phone: text("phone"),
+  formData: jsonb("form_data").notNull().default({}),
+  paymentStatus: text("payment_status").notNull().default("free"), // free | pending | paid | failed
+  stripeSessionId: text("stripe_session_id"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  status: text("status").notNull().default("pending"), // pending | approved | rejected
+  tempPassword: text("temp_password"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 })

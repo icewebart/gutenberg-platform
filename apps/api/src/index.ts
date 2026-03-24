@@ -14,9 +14,14 @@ import communityRoutes from "./routes/community"
 import courseRoutes from "./routes/courses"
 import chatRoutes from "./routes/chat"
 import taskRoutes from "./routes/tasks"
+import stripeRoutes from "./routes/stripe"
 
 const app = express()
 const PORT = process.env.PORT ?? 4000
+
+// ─── Stripe webhook (raw body — MUST be before express.json()) ────────────────
+
+app.use("/stripe", express.raw({ type: "application/json" }), stripeRoutes)
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
@@ -40,6 +45,7 @@ app.use("/community", communityRoutes)
 app.use("/courses", courseRoutes)
 app.use("/conversations", chatRoutes)
 app.use("/tasks", taskRoutes)
+// Note: /stripe routes are registered above (before express.json()) for raw body parsing
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 

@@ -1,0 +1,7 @@
+export const runtime = "edge"
+import { proxyPublicRequest } from "@/lib/bff"
+
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  return proxyPublicRequest(`/projects/${id}/public`)
+}

@@ -30,7 +30,13 @@
       "Bash(ls /Users/mark/gutenberg-platform/apps/web/app/\\\\\\(dashboard\\\\\\)/settings/)",
       "Bash(node -e \"const lucide = require\\(''./apps/web/node_modules/lucide-react''\\); console.log\\(!!lucide.CheckSquare, !!lucide.SquareCheck\\)\")",
       "Bash(ls /Users/mark/gutenberg-platform/apps/web/app/\\\\\\(dashboard\\\\\\)/)",
-      "Bash(grep -l \"LayoutKanban\\\\|CheckSquare\\\\|CheckCircle2\\\\|User2\\\\b\" /Users/mark/gutenberg-platform/apps/web/node_modules/lucide-react/dist/esm/icons/*.js)"
+      "Bash(grep -l \"LayoutKanban\\\\|CheckSquare\\\\|CheckCircle2\\\\|User2\\\\b\" /Users/mark/gutenberg-platform/apps/web/node_modules/lucide-react/dist/esm/icons/*.js)",
+      "Bash(mkdir -p /Users/mark/gutenberg-platform/apps/web/app/api/bff/projects/[id]/public)",
+      "Bash(mkdir -p /Users/mark/gutenberg-platform/apps/web/app/api/bff/projects/[id]/apply/confirm)",
+      "Bash(mkdir -p /Users/mark/gutenberg-platform/apps/web/app/api/bff/projects/[id]/applications/[appId])",
+      "Bash(pnpm exec:*)",
+      "Bash(ls /Users/mark/gutenberg-platform/apps/web/app/apply/[projectId]/)",
+      "Bash(ls /Users/mark/gutenberg-platform/apps/web/app/api/bff/projects/[id]/)"
     ]
   }
 }

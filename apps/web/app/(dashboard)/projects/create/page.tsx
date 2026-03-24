@@ -4,7 +4,7 @@ export const runtime = "edge"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Plus, X, Loader2, ImageIcon, Globe, Lock } from "lucide-react"
+import { ArrowLeft, Plus, X, Loader2, ImageIcon, Globe, Lock, ToggleLeft, ToggleRight, Trash2 } from "lucide-react"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useAuth } from "@/components/auth-context"
 import { useMultiTenant } from "@/components/multi-tenant-context"
 import { getAvatarGradient } from "@/lib/avatar-gradient"
@@ -28,6 +29,23 @@ interface Member {
   role: string
   department: string
 }
+
+interface FormField {
+  id: string
+  type: "text" | "email" | "phone" | "textarea" | "select" | "checkbox"
+  label: string
+  required: boolean
+  options: string[]
+}
+
+const FIELD_TYPES = [
+  { value: "text", label: "Text" },
+  { value: "email", label: "Email" },
+  { value: "phone", label: "Phone" },
+  { value: "textarea", label: "Textarea" },
+  { value: "select", label: "Dropdown" },
+  { value: "checkbox", label: "Checkbox" },
+]
 
 const PROJECT_TYPES = [
   { value: "camp", label: "Camp" },
@@ -125,6 +143,12 @@ export default function CreateProjectPage() {
   const [kpis, setKpis] = useState([""])
   const [partnerOrgs, setPartnerOrgs] = useState([""])
 
+  // Registration
+  const [registrationEnabled, setRegistrationEnabled] = useState(false)
+  const [applicationFee, setApplicationFee] = useState("0")
+  const [autoApprove, setAutoApprove] = useState(false)
+  const [formFields, setFormFields] = useState<FormField[]>([])
+
   // Load members for selectors
   useEffect(() => {
     if (!currentOrganization?.id) return
@@ -164,6 +188,21 @@ export default function CreateProjectPage() {
   const removeListItem = (list: string[], setList: (v: string[]) => void, idx: number) =>
     setList(list.filter((_, i) => i !== idx))
 
+  const addFormField = () => {
+    setFormFields((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), type: "text", label: "", required: false, options: [] },
+    ])
+  }
+
+  const updateFormField = (id: string, patch: Partial<FormField>) => {
+    setFormFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)))
+  }
+
+  const removeFormField = (id: string) => {
+    setFormFields((prev) => prev.filter((f) => f.id !== id))
+  }
+
   const handleSave = async () => {
     if (!title || !shortDescription || !longDescription || !location) {
       setError("Please fill in all required fields (Title, Descriptions, Location).")
@@ -199,6 +238,13 @@ export default function CreateProjectPage() {
         kpis: kpis.filter(Boolean),
         partnerOrganizations: partnerOrgs.filter(Boolean),
         organizationId: currentOrganization.id,
+        registrationEnabled,
+        applicationFee: Math.round(parseFloat(applicationFee || "0") * 100) || 0,
+        autoApprove,
+        formFields: formFields.map((f) => ({
+          ...f,
+          options: f.type === "select" ? f.options : [],
+        })),
       }
 
       const res = await fetch("/api/bff/projects", {
@@ -629,6 +675,150 @@ export default function CreateProjectPage() {
                   <Plus className="h-3.5 w-3.5" /> Add KPI
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 5b — Registration */}
+          <Card className="rounded-2xl border-gray-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">Public Registration</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Toggle enable */}
+              <div className="flex items-center justify-between py-1">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Enable public registration form</p>
+                  <p className="text-xs text-gray-500">Allow external participants to apply via a public URL</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRegistrationEnabled((v) => !v)}
+                  className="flex-shrink-0 ml-4"
+                >
+                  {registrationEnabled ? (
+                    <ToggleRight className="h-7 w-7 text-purple-600" />
+                  ) : (
+                    <ToggleLeft className="h-7 w-7 text-gray-400" />
+                  )}
+                </button>
+              </div>
+
+              {registrationEnabled && (
+                <div className="space-y-4 pt-2 border-t border-gray-100">
+                  {/* Fee */}
+                  <div>
+                    <Label htmlFor="appfee" className="text-sm font-medium">Registration Fee (€)</Label>
+                    <p className="text-xs text-gray-500">Enter 0 for free registration</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-gray-500 text-sm">€</span>
+                      <Input
+                        id="appfee"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={applicationFee}
+                        onChange={(e) => setApplicationFee(e.target.value)}
+                        className="rounded-xl w-36"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Auto-approve */}
+                  <div className="flex items-center justify-between py-1">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">Auto-approve participants</p>
+                      <p className="text-xs text-gray-500">Approve applications automatically after payment/submission</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAutoApprove((v) => !v)}
+                      className="flex-shrink-0 ml-4"
+                    >
+                      {autoApprove ? (
+                        <ToggleRight className="h-7 w-7 text-purple-600" />
+                      ) : (
+                        <ToggleLeft className="h-7 w-7 text-gray-400" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Custom form fields */}
+                  <div>
+                    <Label className="text-sm font-medium">Custom Form Fields</Label>
+                    <p className="text-xs text-gray-500 mb-3">Add extra questions to the application form</p>
+                    <div className="space-y-3">
+                      {formFields.map((field, i) => (
+                        <div key={field.id} className="border border-gray-200 rounded-xl p-3 space-y-3 bg-gray-50">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 font-medium w-5">{i + 1}.</span>
+                            <Input
+                              placeholder="Field label…"
+                              value={field.label}
+                              onChange={(e) => updateFormField(field.id, { label: e.target.value })}
+                              className="rounded-xl flex-1"
+                            />
+                            <Select
+                              value={field.type}
+                              onValueChange={(v) => updateFormField(field.id, { type: v as FormField["type"] })}
+                            >
+                              <SelectTrigger className="rounded-xl w-36">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {FIELD_TYPES.map((t) => (
+                                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <button
+                              type="button"
+                              onClick={() => removeFormField(field.id)}
+                              className="text-red-400 hover:text-red-600 p-1"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-4 pl-7">
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                id={`req-${field.id}`}
+                                checked={field.required}
+                                onCheckedChange={(c) => updateFormField(field.id, { required: !!c })}
+                              />
+                              <Label htmlFor={`req-${field.id}`} className="text-xs text-gray-600 cursor-pointer">Required</Label>
+                            </div>
+                          </div>
+                          {field.type === "select" && (
+                            <div className="pl-7">
+                              <Label className="text-xs text-gray-500">Options (comma-separated)</Label>
+                              <Input
+                                placeholder="Option A, Option B, Option C"
+                                value={field.options.join(", ")}
+                                onChange={(e) =>
+                                  updateFormField(field.id, {
+                                    options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean),
+                                  })
+                                }
+                                className="mt-1 rounded-xl text-sm"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 rounded-xl gap-1 bg-transparent"
+                      onClick={addFormField}
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add Field
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

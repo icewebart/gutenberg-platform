@@ -22,6 +22,11 @@ import {
   Edit,
   Loader2,
   ClipboardList,
+  Copy,
+  Check,
+  UserCheck,
+  UserX,
+  Link2,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -31,6 +36,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/components/auth-context"
 import { getAvatarGradient } from "@/lib/avatar-gradient"
+
+interface Application {
+  id: string
+  projectId: string
+  userId?: string
+  email: string
+  firstName: string
+  lastName: string
+  phone?: string
+  formData: Record<string, unknown>
+  paymentStatus: string
+  stripeSessionId?: string
+  status: string
+  tempPassword?: string
+  createdAt: string
+}
 
 interface ApiProject {
   id: string
@@ -128,6 +149,9 @@ export default function ProjectDetailPage() {
   const [manager, setManager] = useState<MemberUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [linkedTasksCount, setLinkedTasksCount] = useState(0)
+  const [applications, setApplications] = useState<Application[]>([])
+  const [appsLoading, setAppsLoading] = useState(false)
+  const [copiedUrl, setCopiedUrl] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -159,6 +183,40 @@ export default function ProjectDetailPage() {
       .then((data) => setLinkedTasksCount(Array.isArray(data) ? data.length : 0))
       .catch(() => {})
   }, [id])
+
+  // Fetch applications (admin/board_member only)
+  useEffect(() => {
+    if (!id || !hasRole(["admin", "board_member"])) return
+    setAppsLoading(true)
+    fetch(`/api/bff/projects/${id}/applications`)
+      .then((r) => r.json())
+      .then((data) => setApplications(Array.isArray(data) ? data : []))
+      .catch(() => {})
+      .finally(() => setAppsLoading(false))
+  }, [id, hasRole])
+
+  const handleApplicationAction = async (appId: string, status: "approved" | "rejected") => {
+    const res = await fetch(`/api/bff/projects/${id}/applications/${appId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setApplications((prev) => prev.map((a) => (a.id === appId ? updated : a)))
+    }
+  }
+
+  const applyUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/apply/${id}`
+    : `https://crm.gutenberg.ro/apply/${id}`
+
+  const copyApplyUrl = () => {
+    navigator.clipboard.writeText(applyUrl).then(() => {
+      setCopiedUrl(true)
+      setTimeout(() => setCopiedUrl(false), 2000)
+    })
+  }
 
   if (loading) {
     return (
@@ -296,6 +354,16 @@ export default function ProjectDetailPage() {
           <TabsTrigger value="overview" className="rounded-lg">Overview</TabsTrigger>
           <TabsTrigger value="team" className="rounded-lg">Team</TabsTrigger>
           <TabsTrigger value="goals" className="rounded-lg">Goals & KPIs</TabsTrigger>
+          {canEdit && (
+            <TabsTrigger value="applications" className="rounded-lg gap-1.5">
+              Applications
+              {applications.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full font-semibold">
+                  {applications.length}
+                </span>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* OVERVIEW tab */}
@@ -516,6 +584,119 @@ export default function ProjectDetailPage() {
             </div>
           )}
         </TabsContent>
+
+        {/* APPLICATIONS tab — admin/board_member only */}
+        {canEdit && (
+          <TabsContent value="applications" className="mt-4 space-y-4">
+            {/* Public apply URL */}
+            <Card className="rounded-2xl border-gray-200">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Link2 className="h-4 w-4 text-purple-500" />
+                  Public Application URL
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                  <span className="flex-1 font-mono text-sm text-gray-600 truncate">{applyUrl}</span>
+                  <button
+                    onClick={copyApplyUrl}
+                    className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded flex-shrink-0"
+                  >
+                    {copiedUrl ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Applications table */}
+            <Card className="rounded-2xl border-gray-200">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold">
+                  Applications
+                  <span className="ml-2 text-sm font-normal text-gray-400">({applications.length})</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {appsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
+                  </div>
+                ) : applications.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-4 text-center">No applications yet.</p>
+                ) : (
+                  <div className="divide-y">
+                    {applications.map((app) => (
+                      <div key={app.id} className="py-3 flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">
+                            {app.firstName} {app.lastName}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">{app.email}</p>
+                          <p className="text-xs text-gray-400">
+                            {new Date(app.createdAt).toLocaleDateString("en-GB", {
+                              day: "numeric", month: "short", year: "numeric",
+                            })}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Badge
+                            className={`text-xs border ${
+                              app.paymentStatus === "paid"
+                                ? "bg-green-50 text-green-700 border-green-200"
+                                : app.paymentStatus === "pending"
+                                ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                : "bg-gray-50 text-gray-600 border-gray-200"
+                            }`}
+                          >
+                            {app.paymentStatus === "free" ? "Free" : app.paymentStatus === "paid" ? "Paid" : "Pending"}
+                          </Badge>
+                          <Badge
+                            className={`text-xs border ${
+                              app.status === "approved"
+                                ? "bg-green-50 text-green-700 border-green-200"
+                                : app.status === "rejected"
+                                ? "bg-red-50 text-red-700 border-red-200"
+                                : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                            }`}
+                          >
+                            {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                          </Badge>
+                          {app.status === "pending" && (
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 px-2 rounded-lg text-xs text-green-700 border-green-200 hover:bg-green-50 gap-1"
+                                onClick={() => handleApplicationAction(app.id, "approved")}
+                              >
+                                <UserCheck className="h-3.5 w-3.5" />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 px-2 rounded-lg text-xs text-red-700 border-red-200 hover:bg-red-50 gap-1"
+                                onClick={() => handleApplicationAction(app.id, "rejected")}
+                              >
+                                <UserX className="h-3.5 w-3.5" />
+                                Reject
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )
