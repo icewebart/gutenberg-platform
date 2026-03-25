@@ -10,13 +10,13 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Building2, Globe, Plus, Loader2, ArrowRight, GraduationCap, Network } from "lucide-react"
+import { Building2, Plus, Loader2, ArrowRight, GraduationCap, Network } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface Org {
   id: string
   name: string
-  domain: string
+  domain?: string
   type: string
   settings: { allowRegistration: boolean; requireApproval: boolean; defaultRole: string }
   createdAt: string
@@ -45,7 +45,7 @@ export default function OrganizationsPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [form, setForm] = useState({ name: "", domain: "", type: "student_organization" })
+  const [form, setForm] = useState({ name: "", type: "student_organization" })
   const [error, setError] = useState("")
 
   useEffect(() => { fetchOrgs() }, [])
@@ -60,7 +60,7 @@ export default function OrganizationsPage() {
   }
 
   const handleCreate = async () => {
-    if (!form.name || !form.domain) { setError("Name and domain are required."); return }
+    if (!form.name) { setError("Name is required."); return }
     setCreating(true); setError("")
     try {
       const res = await fetch("/api/bff/organizations", {
@@ -72,7 +72,7 @@ export default function OrganizationsPage() {
         const newOrg = await res.json()
         setOrgs((prev) => [...prev, newOrg])
         setDialogOpen(false)
-        setForm({ name: "", domain: "", type: "student_organization" })
+        setForm({ name: "", type: "student_organization" })
       } else {
         const data = await res.json()
         setError(data.error || "Failed to create organization.")
@@ -105,15 +105,6 @@ export default function OrganizationsPage() {
                     placeholder="Gutenberg Platform"
                     value={form.name}
                     onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Domain</Label>
-                  <Input
-                    className="rounded-field"
-                    placeholder="gutenberg.org"
-                    value={form.domain}
-                    onChange={(e) => setForm((f) => ({ ...f, domain: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -176,10 +167,6 @@ export default function OrganizationsPage() {
                   <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors mt-1" />
                 </div>
                 <h3 className="font-semibold text-gray-900 text-lg mb-1">{org.name}</h3>
-                <div className="flex items-center gap-1 text-sm text-gray-500 mb-3">
-                  <Globe className="h-3.5 w-3.5" />
-                  {org.domain}
-                </div>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline" className="text-xs flex items-center gap-1">
                     <TypeIcon className="h-3 w-3" />

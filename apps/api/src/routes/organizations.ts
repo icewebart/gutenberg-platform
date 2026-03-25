@@ -5,6 +5,12 @@ import { requireAuth, requireRole, type AuthRequest } from "../middleware/auth"
 
 const router = Router()
 
+function generateDomain(name: string): string {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+  const suffix = Math.random().toString(36).slice(2, 8)
+  return `${slug}-${suffix}`
+}
+
 // GET /organizations
 router.get("/", requireAuth, async (req: AuthRequest, res) => {
   try {
@@ -49,14 +55,13 @@ router.get("/:id/cities", requireAuth, async (req: AuthRequest, res) => {
 // PATCH /organizations/:id (admin only)
 router.patch("/:id", requireAuth, requireRole("admin"), async (req: AuthRequest, res) => {
   try {
-    const { name, domain, type, settings } = req.body
+    const { name, type, settings } = req.body
     const [updated] = await db
       .update(organizations)
       .set({
         ...(name ? { name } : {}),
-        ...(domain ? { domain } : {}),
         ...(type ? { type } : {}),
-        ...(settings ? { settings } : {}),
+        ...(settings !== undefined ? { settings } : {}),
         updatedAt: new Date(),
       })
       .where(eq(organizations.id, req.params.id))
@@ -66,11 +71,7 @@ router.patch("/:id", requireAuth, requireRole("admin"), async (req: AuthRequest,
       return
     }
     res.json(updated)
-  } catch (err: any) {
-    if (err.code === "23505") {
-      res.status(409).json({ error: "Domain already in use" })
-      return
-    }
+  } catch (err) {
     console.error(err)
     res.status(500).json({ error: "Internal server error" })
   }
@@ -90,14 +91,14 @@ router.delete("/:id", requireAuth, requireRole("admin"), async (req: AuthRequest
 // POST /organizations (admin only)
 router.post("/", requireAuth, requireRole("admin"), async (req: AuthRequest, res) => {
   try {
-    const { name, domain, type, settings } = req.body
-    if (!name || !domain) {
-      res.status(400).json({ error: "name and domain are required" })
+    const { name, type, settings } = req.body
+    if (!name) {
+      res.status(400).json({ error: "name is required" })
       return
     }
     const [org] = await db.insert(organizations).values({
       name,
-      domain,
+      domain: generateDomain(name),
       type: type ?? "student_organization",
       settings,
     }).returning()

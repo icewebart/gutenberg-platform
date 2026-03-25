@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Building2, Globe, Loader2, Save, Users, GraduationCap, Network } from "lucide-react"
+import { ArrowLeft, Building2, Loader2, Save, Users, GraduationCap, Network } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { getAvatarGradient } from "@/lib/avatar-gradient"
@@ -22,7 +22,7 @@ import { getAvatarGradient } from "@/lib/avatar-gradient"
 interface Org {
   id: string
   name: string
-  domain: string
+  domain?: string
   type: string
   settings: { allowRegistration: boolean; requireApproval: boolean; defaultRole: string }
   createdAt: string
@@ -61,7 +61,6 @@ export default function OrganizationDetailPage() {
   const [saveSuccess, setSaveSuccess] = useState(false)
 
   const [editName, setEditName] = useState("")
-  const [editDomain, setEditDomain] = useState("")
   const [editType, setEditType] = useState("student_organization")
   const [editAllowReg, setEditAllowReg] = useState(true)
   const [editRequireApproval, setEditRequireApproval] = useState(false)
@@ -78,7 +77,6 @@ export default function OrganizationDetailPage() {
           const data = await orgRes.json()
           setOrg(data)
           setEditName(data.name)
-          setEditDomain(data.domain)
           setEditType(data.type ?? "student_organization")
           setEditAllowReg(data.settings?.allowRegistration ?? true)
           setEditRequireApproval(data.settings?.requireApproval ?? false)
@@ -102,7 +100,6 @@ export default function OrganizationDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: editName,
-          domain: editDomain,
           type: editType,
           settings: { allowRegistration: editAllowReg, requireApproval: editRequireApproval, defaultRole: editDefaultRole },
         }),
@@ -171,8 +168,6 @@ export default function OrganizationDetailPage() {
         <div>
           <h1 className="title-page">{org.name}</h1>
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <Globe className="h-3.5 w-3.5" />
-            {org.domain}
             <Badge variant="outline" className="text-xs flex items-center gap-1">
               <TypeIcon className="h-3 w-3" />
               {typeConfig.label}
@@ -201,10 +196,6 @@ export default function OrganizationDetailPage() {
               <div className="space-y-1">
                 <Label>Organization Name</Label>
                 <Input className="rounded-field" value={editName} onChange={(e) => setEditName(e.target.value)} disabled={!isAdmin} />
-              </div>
-              <div className="space-y-1">
-                <Label>Domain</Label>
-                <Input className="rounded-field" value={editDomain} onChange={(e) => setEditDomain(e.target.value)} disabled={!isAdmin} />
               </div>
               <div className="space-y-2">
                 <Label>Organization Type</Label>
