@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useMultiTenant } from "../multi-tenant-context"
 import { useAuth } from "../auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { createMemberManuallyAction } from "@/app/actions/invitations"
 import { UserPlus, Loader2 } from "lucide-react"
 
 export function CreateMemberForm() {
@@ -20,49 +17,53 @@ export function CreateMemberForm() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  // Controlled form state
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [role, setRole] = useState("volunteer")
+  const [department, setDepartment] = useState("None")
+  const [netzwerkCityId, setNetzwerkCityId] = useState("")
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-
-    const formData = new FormData(e.currentTarget)
-    formData.append("organizationId", currentOrganization.id)
-
-    const password = formData.get("password") as string
-    const confirmPassword = formData.get("confirmPassword") as string
-
     if (password !== confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Passwords do not match",
-        variant: "destructive",
-      })
-      setLoading(false)
+      toast({ title: "Error", description: "Passwords do not match", variant: "destructive" })
       return
     }
+    if (password.length < 8) {
+      toast({ title: "Error", description: "Password must be at least 8 characters", variant: "destructive" })
+      return
+    }
+    setLoading(true)
 
     try {
-      const result = await createMemberManuallyAction(formData)
-
-      if (result.success) {
-        toast({
-          title: "Member Created!",
-          description: "The new member has been added successfully.",
-        })
-        // @ts-ignore
-        e.target.reset()
-      } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to create member",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive",
+      const res = await fetch("/api/bff/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          email: email.trim().toLowerCase(),
+          password,
+          role,
+          department: department !== "None" ? department : undefined,
+          organizationId: currentOrganization.id,
+          netzwerkCityId: netzwerkCityId && netzwerkCityId !== "none" ? netzwerkCityId : undefined,
+        }),
       })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        toast({ title: "Member Created!", description: `${name} has been added to ${currentOrganization.name}.` })
+        setName(""); setEmail(""); setPassword(""); setConfirmPassword("")
+        setRole("volunteer"); setDepartment("None"); setNetzwerkCityId("")
+      } else {
+        toast({ title: "Error", description: data.error || "Failed to create member", variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Error", description: "An unexpected error occurred", variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -84,11 +85,11 @@ export function CreateMemberForm() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="manual-name">Full Name</Label>
-              <Input id="manual-name" name="name" placeholder="John Doe" required />
+              <Input id="manual-name" placeholder="John Doe" required value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="manual-email">Email Address</Label>
-              <Input id="manual-email" name="email" type="email" placeholder="john@example.com" required />
+              <Input id="manual-email" type="email" placeholder="john@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
           </div>
 
@@ -97,30 +98,32 @@ export function CreateMemberForm() {
               <Label htmlFor="manual-password">Password</Label>
               <Input
                 id="manual-password"
-                name="password"
                 type="password"
                 placeholder="••••••••"
                 required
-                minLength={6}
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="manual-confirmPassword">Confirm Password</Label>
+              <Label htmlFor="manual-confirm">Confirm Password</Label>
               <Input
-                id="manual-confirmPassword"
-                name="confirmPassword"
+                id="manual-confirm"
                 type="password"
                 placeholder="••••••••"
                 required
-                minLength={6}
+                minLength={8}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="manual-role">Role</Label>
-              <Select name="role" defaultValue="volunteer" required>
+              <Label>Role</Label>
+              <Select value={role} onValueChange={setRole}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
@@ -133,12 +136,13 @@ export function CreateMemberForm() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="manual-department">Department</Label>
-              <Select name="department">
+              <Label>Department</Label>
+              <Select value={department} onValueChange={setDepartment}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select department (optional)" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="None">None</SelectItem>
                   <SelectItem value="HR">HR</SelectItem>
                   <SelectItem value="PR">PR</SelectItem>
                   <SelectItem value="FR">FR</SelectItem>
@@ -151,13 +155,13 @@ export function CreateMemberForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="manual-netzwerkCityId">Netzwerk City (Optional)</Label>
-            <Select name="netzwerkCityId">
+            <Label>Netzwerk City (optional)</Label>
+            <Select value={netzwerkCityId} onValueChange={setNetzwerkCityId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select city (optional)" />
+                <SelectValue placeholder="None — Main Organization" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None - Main Organization</SelectItem>
+                <SelectItem value="none">None — Main Organization</SelectItem>
                 {netzwerkCities.map((city) => (
                   <SelectItem key={city.id} value={city.id}>
                     {city.name}

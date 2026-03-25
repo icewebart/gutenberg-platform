@@ -16,7 +16,6 @@ import { cn } from "@/lib/utils"
 interface Org {
   id: string
   name: string
-  domain?: string
   type: string
   settings: { allowRegistration: boolean; requireApproval: boolean; defaultRole: string }
   createdAt: string

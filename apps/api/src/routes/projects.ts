@@ -5,6 +5,7 @@ import { requireAuth, requireRole, type AuthRequest } from "../middleware/auth"
 import { createProjectSchema, updateProjectSchema } from "@gutenberg/shared"
 import Stripe from "stripe"
 import bcrypt from "bcryptjs"
+import { sendApplicationApprovedEmail, sendApplicationRejectedEmail } from "../lib/email"
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY
@@ -365,6 +366,11 @@ router.post("/:id/apply", async (req, res) => {
             role: "participant",
           })
         }
+        // Send auto-approval email (non-blocking)
+        const webUrl = process.env.WEB_URL ?? "http://localhost:3000"
+        const fullName = `${firstName} ${lastName}`.trim()
+        sendApplicationApprovedEmail(email, fullName, project.title, tempPassword, webUrl)
+          .catch((err) => console.error("[email] Failed to send auto-approval email:", err))
       }
 
       res.json({ success: true, email, tempPassword, status: appStatus })
@@ -501,6 +507,10 @@ router.patch("/:id/applications/:appId", requireAuth, requireRole("admin", "boar
       return
     }
 
+    const project = await db.query.projects.findFirst({
+      where: eq(projects.id, req.params.id),
+    })
+
     if (status === "approved" && updated.userId) {
       const existingMember = await db.query.projectMembers.findFirst({
         where: and(
@@ -515,6 +525,19 @@ router.patch("/:id/applications/:appId", requireAuth, requireRole("admin", "boar
           role: "participant",
         })
       }
+      // Send approval email (non-blocking)
+      const webUrl = process.env.WEB_URL ?? "http://localhost:3000"
+      const name = `${updated.firstName} ${updated.lastName}`.trim()
+      if (updated.tempPassword && project) {
+        sendApplicationApprovedEmail(updated.email, name, project.title, updated.tempPassword, webUrl)
+          .catch((err) => console.error("[email] Failed to send approval email:", err))
+      }
+    }
+
+    if (status === "rejected" && project) {
+      const name = `${updated.firstName} ${updated.lastName}`.trim()
+      sendApplicationRejectedEmail(updated.email, name, project.title)
+        .catch((err) => console.error("[email] Failed to send rejection email:", err))
     }
 
     res.json(updated)
