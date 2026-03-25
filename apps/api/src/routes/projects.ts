@@ -6,7 +6,11 @@ import { createProjectSchema, updateProjectSchema } from "@gutenberg/shared"
 import Stripe from "stripe"
 import bcrypt from "bcryptjs"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", { apiVersion: "2024-11-20.acacia" as any })
+function getStripe(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY
+  if (!key) throw new Error("STRIPE_SECRET_KEY is not set in environment variables")
+  return new Stripe(key, { apiVersion: "2024-11-20.acacia" as any })
+}
 
 function generateTempPassword(): string {
   const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"
@@ -279,7 +283,7 @@ router.post("/:id/apply", async (req, res) => {
         })
         .returning()
 
-      const session = await stripe.checkout.sessions.create({
+      const session = await getStripe().checkout.sessions.create({
         payment_method_types: ["card"],
         line_items: [
           {
@@ -365,9 +369,9 @@ router.post("/:id/apply", async (req, res) => {
 
       res.json({ success: true, email, tempPassword, status: appStatus })
     }
-  } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: "Internal server error" })
+  } catch (err: any) {
+    console.error("[apply]", err)
+    res.status(500).json({ error: err?.message ?? "Internal server error" })
   }
 })
 
@@ -380,7 +384,7 @@ router.get("/:id/apply/confirm", async (req, res) => {
       return
     }
 
-    const session = await stripe.checkout.sessions.retrieve(sessionId)
+    const session = await getStripe().checkout.sessions.retrieve(sessionId)
 
     const application = await db.query.projectApplications.findFirst({
       where: eq(projectApplications.stripeSessionId, sessionId),
