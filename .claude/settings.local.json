@@ -36,7 +36,11 @@
       "Bash(mkdir -p /Users/mark/gutenberg-platform/apps/web/app/api/bff/projects/[id]/applications/[appId])",
       "Bash(pnpm exec:*)",
       "Bash(ls /Users/mark/gutenberg-platform/apps/web/app/apply/[projectId]/)",
-      "Bash(ls /Users/mark/gutenberg-platform/apps/web/app/api/bff/projects/[id]/)"
+      "Bash(ls /Users/mark/gutenberg-platform/apps/web/app/api/bff/projects/[id]/)",
+      "Bash(grep -l \"project_applications\\\\|STRIPE\" /Users/mark/gutenberg-platform/apps/api/drizzle/*.sql)",
+      "Bash(grep -n \"domain\\\\|Domain\" /Users/mark/gutenberg-platform/apps/web/app/\\\\\\(dashboard\\\\\\)/organizations/[id]/page.tsx)",
+      "Bash(grep -n \"Globe\" /Users/mark/gutenberg-platform/apps/web/app/\\\\\\(dashboard\\\\\\)/organizations/[id]/page.tsx)",
+      "Bash(pnpm --filter api add resend)"
     ]
   }
 }

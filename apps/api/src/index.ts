@@ -15,6 +15,7 @@ import courseRoutes from "./routes/courses"
 import chatRoutes from "./routes/chat"
 import taskRoutes from "./routes/tasks"
 import stripeRoutes from "./routes/stripe"
+import invitationRoutes from "./routes/invitations"
 
 const app = express()
 const PORT = process.env.PORT ?? 4000
@@ -45,6 +46,7 @@ app.use("/community", communityRoutes)
 app.use("/courses", courseRoutes)
 app.use("/conversations", chatRoutes)
 app.use("/tasks", taskRoutes)
+app.use("/invitations", invitationRoutes)
 // Note: /stripe routes are registered above (before express.json()) for raw body parsing
 
 // ─── Start ────────────────────────────────────────────────────────────────────

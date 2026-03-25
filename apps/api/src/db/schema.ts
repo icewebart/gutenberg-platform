@@ -73,6 +73,8 @@ export const users = pgTable("users", {
     badges: [],
     achievements: [],
   }),
+  emailVerificationToken: text("email_verification_token"),
+  emailVerifiedAt: timestamp("email_verified_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 })
