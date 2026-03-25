@@ -1,6 +1,6 @@
 import { Resend } from "resend"
 
-const FROM = process.env.FROM_EMAIL ?? "Gutenberg Platform <noreply@gutenberg.ro>"
+const FROM = process.env.FROM_EMAIL ?? "Gutenberg Platform <noreply@verein.gutenberg.ro>"
 
 function getResend(): Resend {
   const key = process.env.RESEND_API_KEY
