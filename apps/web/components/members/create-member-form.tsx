@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,20 +11,45 @@ import { useAuth } from "../auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { UserPlus, Loader2 } from "lucide-react"
 
+interface Org { id: string; name: string }
+
 export function CreateMemberForm() {
-  const { currentOrganization, netzwerkCities } = useMultiTenant()
+  const { currentOrganization } = useMultiTenant()
   const { user } = useAuth()
   const { toast } = useToast()
-  const [loading, setLoading] = useState(false)
+  const isAdmin = user?.role === "admin"
 
-  // Controlled form state
+  const [loading, setLoading] = useState(false)
+  const [orgs, setOrgs] = useState<Org[]>([])
+
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [role, setRole] = useState("volunteer")
   const [department, setDepartment] = useState("None")
-  const [netzwerkCityId, setNetzwerkCityId] = useState("")
+  const [organizationId, setOrganizationId] = useState(currentOrganization?.id ?? "")
+
+  // Admins: load all orgs
+  useEffect(() => {
+    if (!isAdmin) return
+    fetch("/api/bff/organizations")
+      .then((r) => r.json())
+      .then((data) => Array.isArray(data) ? setOrgs(data) : [])
+      .catch(() => {})
+  }, [isAdmin])
+
+  useEffect(() => {
+    if (currentOrganization?.id && !organizationId) {
+      setOrganizationId(currentOrganization.id)
+    }
+  }, [currentOrganization?.id])
+
+  const reset = () => {
+    setName(""); setEmail(""); setPassword(""); setConfirmPassword("")
+    setRole("volunteer"); setDepartment("None")
+    setOrganizationId(currentOrganization?.id ?? "")
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,17 +73,16 @@ export function CreateMemberForm() {
           password,
           role,
           department: department !== "None" ? department : undefined,
-          organizationId: currentOrganization.id,
-          netzwerkCityId: netzwerkCityId && netzwerkCityId !== "none" ? netzwerkCityId : undefined,
+          organizationId,
         }),
       })
 
       const data = await res.json()
 
       if (res.ok) {
-        toast({ title: "Member Created!", description: `${name} has been added to ${currentOrganization.name}.` })
-        setName(""); setEmail(""); setPassword(""); setConfirmPassword("")
-        setRole("volunteer"); setDepartment("None"); setNetzwerkCityId("")
+        const orgName = orgs.find((o) => o.id === organizationId)?.name ?? currentOrganization?.name ?? "the organisation"
+        toast({ title: "Member Created!", description: `${name} has been added to ${orgName}.` })
+        reset()
       } else {
         toast({ title: "Error", description: data.error || "Failed to create member", variant: "destructive" })
       }
@@ -77,46 +101,48 @@ export function CreateMemberForm() {
           Create Member Manually
         </CardTitle>
         <CardDescription>
-          Add a new member directly to {currentOrganization.name} with a password. They can log in immediately.
+          Add a member directly with a password — they can log in immediately.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+
+          {/* Organisation — admins can pick */}
+          {isAdmin && orgs.length > 0 && (
+            <div className="space-y-2">
+              <Label>Organisation</Label>
+              <Select value={organizationId} onValueChange={setOrganizationId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select organisation" />
+                </SelectTrigger>
+                <SelectContent>
+                  {orgs.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="manual-name">Full Name</Label>
-              <Input id="manual-name" placeholder="John Doe" required value={name} onChange={(e) => setName(e.target.value)} />
+              <Label htmlFor="cm-name">Full Name</Label>
+              <Input id="cm-name" placeholder="John Doe" required value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="manual-email">Email Address</Label>
-              <Input id="manual-email" type="email" placeholder="john@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Label htmlFor="cm-email">Email Address</Label>
+              <Input id="cm-email" type="email" placeholder="john@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="manual-password">Password</Label>
-              <Input
-                id="manual-password"
-                type="password"
-                placeholder="••••••••"
-                required
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <Label htmlFor="cm-password">Password</Label>
+              <Input id="cm-password" type="password" placeholder="••••••••" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="manual-confirm">Confirm Password</Label>
-              <Input
-                id="manual-confirm"
-                type="password"
-                placeholder="••••••••"
-                required
-                minLength={8}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
+              <Label htmlFor="cm-confirm">Confirm Password</Label>
+              <Input id="cm-confirm" type="password" placeholder="••••••••" required minLength={8} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
             </div>
           </div>
 
@@ -124,23 +150,19 @@ export function CreateMemberForm() {
             <div className="space-y-2">
               <Label>Role</Label>
               <Select value={role} onValueChange={setRole}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="volunteer">Volunteer</SelectItem>
                   <SelectItem value="participant">Participant</SelectItem>
-                  {user?.role === "admin" && <SelectItem value="board_member">Board Member</SelectItem>}
-                  {user?.role === "admin" && <SelectItem value="admin">Admin</SelectItem>}
+                  {isAdmin && <SelectItem value="board_member">Board Member</SelectItem>}
+                  {isAdmin && <SelectItem value="admin">Admin</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>Department</Label>
               <Select value={department} onValueChange={setDepartment}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department (optional)" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="None">None</SelectItem>
                   <SelectItem value="HR">HR</SelectItem>
@@ -154,35 +176,10 @@ export function CreateMemberForm() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Netzwerk City (optional)</Label>
-            <Select value={netzwerkCityId} onValueChange={setNetzwerkCityId}>
-              <SelectTrigger>
-                <SelectValue placeholder="None — Main Organization" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None — Main Organization</SelectItem>
-                {netzwerkCities.map((city) => (
-                  <SelectItem key={city.id} value={city.id}>
-                    {city.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              <>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Create Member
-              </>
-            )}
+          <Button type="submit" className="w-full" disabled={loading || !organizationId}>
+            {loading
+              ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating…</>
+              : <><UserPlus className="mr-2 h-4 w-4" />Create Member</>}
           </Button>
         </form>
       </CardContent>
