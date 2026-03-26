@@ -75,6 +75,8 @@ export const users = pgTable("users", {
   }),
   emailVerificationToken: text("email_verification_token"),
   emailVerifiedAt: timestamp("email_verified_at"),
+  passwordResetToken: text("password_reset_token"),
+  passwordResetExpiresAt: timestamp("password_reset_expires_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 })
@@ -261,6 +263,39 @@ export const invitations = pgTable("invitations", {
   expiresAt: timestamp("expires_at").notNull(),
   usedAt: timestamp("used_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+})
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export const notifications = pgTable("notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // member_joined | project_assigned | task_assigned | task_completed | community_reply | application_approved | application_rejected | system
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  link: text("link"), // optional deep link
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+})
+
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
+  memberJoined: boolean("member_joined").notNull().default(true),
+  projectUpdates: boolean("project_updates").notNull().default(true),
+  taskAssigned: boolean("task_assigned").notNull().default(true),
+  communityReplies: boolean("community_replies").notNull().default(true),
+  applicationUpdates: boolean("application_updates").notNull().default(true),
+  systemAlerts: boolean("system_alerts").notNull().default(false),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 })
 
 // ─── Project Applications ─────────────────────────────────────────────────────

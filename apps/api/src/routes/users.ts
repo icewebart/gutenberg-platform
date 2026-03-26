@@ -5,6 +5,7 @@ import { db, users } from "../db"
 import { requireAuth, requireRole, type AuthRequest } from "../middleware/auth"
 import { updateUserSchema, addPointsSchema } from "@gutenberg/shared"
 import { v4 as uuidv4 } from "uuid"
+import { createNotification } from "./notifications"
 
 const router = Router()
 
@@ -160,6 +161,17 @@ router.post("/", requireAuth, requireRole("admin"), async (req: AuthRequest, res
       .returning()
 
     const { passwordHash: _, ...safe } = user
+
+    // Notify the new user
+    createNotification({
+      userId: user.id,
+      organizationId,
+      type: "member_joined",
+      title: "Welcome to the platform! 👋",
+      message: `Your account has been created. Welcome to the team!`,
+      link: "/dashboard",
+    })
+
     res.status(201).json({ ...safe, temporaryPassword: password ? undefined : tempPassword })
   } catch (err) {
     console.error(err)

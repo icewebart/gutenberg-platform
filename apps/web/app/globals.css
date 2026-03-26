@@ -18,8 +18,8 @@
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 96.1%;
     --secondary-foreground: 0 0% 9%;
     --muted: 0 0% 96.1%;
@@ -37,6 +37,13 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+    /* ── Brand colours ── change these to rebrand the entire platform */
+    --brand-purple: #7c3aed;
+    --brand-purple-dark: #6d28d9;
+    --brand-purple-light: #ede9fe;
+    --brand-blue: #2563eb;
+    --brand-blue-dark: #1d4ed8;
+    --brand-blue-light: #dbeafe;
     --radius-field: 8px;   /* inputs, badges, small chips */
     --radius-box: 12px;    /* cards, panels, dropdowns */
     --font-title: var(--font-title);
@@ -100,8 +107,12 @@
 @layer components {
   /* Global button */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-sm;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 shadow-sm;
+    background: linear-gradient(135deg, var(--brand-blue), var(--brand-purple));
     border-radius: var(--radius-field);
+  }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, var(--brand-blue-dark), var(--brand-purple-dark));
   }
 
   .btn-secondary {

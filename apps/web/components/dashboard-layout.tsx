@@ -2,9 +2,9 @@
 
 import type React from "react"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   Users,
@@ -38,16 +38,93 @@ interface DashboardLayoutProps {
   children: React.ReactNode
 }
 
+interface Notification {
+  id: string
+  type: string
+  title: string
+  message: string
+  link?: string | null
+  isRead: boolean
+  createdAt: string
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return "just now"
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return days === 1 ? "Yesterday" : `${days}d ago`
+}
+
+function notifIcon(type: string): string {
+  switch (type) {
+    case "member_joined": return "👋"
+    case "project_assigned": return "📁"
+    case "task_assigned": return "✅"
+    case "task_completed": return "🏆"
+    case "community_reply": return "💬"
+    case "application_approved": return "🎉"
+    case "application_rejected": return "📋"
+    default: return "🔔"
+  }
+}
+
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, logout, hasPermission, hasRole } = useAuth()
   const { currentOrganization, netzwerkCities } = useMultiTenant()
   const pathname = usePathname()
+  const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notifLoading, setNotifLoading] = useState(false)
 
   const userMenuRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setNotifLoading(true)
+      const res = await fetch("/api/bff/notifications")
+      if (res.ok) {
+        const data = await res.json()
+        setNotifications(Array.isArray(data) ? data.slice(0, 8) : [])
+      }
+    } catch { /* silent */ }
+    finally { setNotifLoading(false) }
+  }, [])
+
+  // Fetch when bell opens, also poll every 60s
+  useEffect(() => {
+    if (notifOpen) fetchNotifications()
+  }, [notifOpen, fetchNotifications])
+
+  useEffect(() => {
+    fetchNotifications()
+    const interval = setInterval(fetchNotifications, 60000)
+    return () => clearInterval(interval)
+  }, [fetchNotifications])
+
+  const markAllRead = async () => {
+    await fetch("/api/bff/notifications/read-all", { method: "PATCH" })
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+  }
+
+  const handleNotifClick = async (n: Notification) => {
+    if (!n.isRead) {
+      await fetch(`/api/bff/notifications/${n.id}/read`, { method: "PATCH" })
+      setNotifications((prev) => prev.map((x) => x.id === n.id ? { ...x, isRead: true } : x))
+    }
+    setNotifOpen(false)
+    if (n.link) router.push(n.link)
+    else router.push("/notifications")
+  }
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -175,31 +252,70 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 onClick={() => setNotifOpen(!notifOpen)}
               >
                 <Bell className="h-5 w-5" />
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                  3
-                </span>
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </Button>
               {notifOpen && (
                 <div className="absolute right-0 top-full mt-1 w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden" style={{ zIndex: 9999 }}>
                   <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                     <p className="text-sm font-semibold text-gray-900">Notifications</p>
-                    <span className="text-xs text-blue-600 cursor-pointer hover:underline">Mark all as read</span>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={markAllRead}
+                        className="text-xs text-blue-600 cursor-pointer hover:underline"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
                   </div>
-                  {[
-                    { title: "New project assigned", time: "2 min ago", desc: "You were added to Project Alpha", seen: false },
-                    { title: "Community reply", time: "1 hour ago", desc: "Someone replied to your post", seen: false },
-                    { title: "New volunteer joined", time: "3 hours ago", desc: "Maria joined your organization", seen: false },
-                    { title: "Course completed", time: "Yesterday", desc: "You completed Introduction to Gutenberg", seen: true },
-                  ].map((n, i) => (
-                    <div key={i} className={cn("px-4 py-3 cursor-pointer border-b border-gray-100 last:border-0 flex gap-3 items-start", n.seen ? "hover:bg-gray-50" : "bg-blue-50 hover:bg-blue-100")}>
-                      <div className={cn("mt-1.5 h-2 w-2 rounded-full shrink-0", n.seen ? "bg-transparent" : "bg-blue-500")} />
-                      <div>
-                        <p className={cn("text-sm", n.seen ? "font-normal text-gray-700" : "font-medium text-gray-900")}>{n.title}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{n.desc}</p>
-                        <p className="text-xs text-gray-400 mt-1">{n.time}</p>
+
+                  <div className="max-h-72 overflow-y-auto">
+                    {notifLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                       </div>
-                    </div>
-                  ))}
+                    ) : notifications.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-sm text-gray-400">
+                        No notifications yet
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <button
+                          key={n.id}
+                          onClick={() => handleNotifClick(n)}
+                          className={cn(
+                            "w-full text-left px-4 py-3 border-b border-gray-100 last:border-0 flex gap-3 items-start transition-colors",
+                            n.isRead ? "hover:bg-gray-50" : "bg-blue-50 hover:bg-blue-100"
+                          )}
+                        >
+                          <span className="text-base shrink-0 mt-0.5">{notifIcon(n.type)}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn("text-sm truncate", n.isRead ? "font-normal text-gray-700" : "font-medium text-gray-900")}>
+                              {n.title}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{n.message}</p>
+                            <p className="text-xs text-gray-400 mt-1">{timeAgo(n.createdAt)}</p>
+                          </div>
+                          {!n.isRead && (
+                            <div className="mt-1.5 h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="border-t border-gray-100">
+                    <Link
+                      href="/notifications"
+                      onClick={() => setNotifOpen(false)}
+                      className="block px-4 py-2.5 text-center text-sm text-blue-600 hover:bg-blue-50 font-medium transition-colors"
+                    >
+                      View all notifications →
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>

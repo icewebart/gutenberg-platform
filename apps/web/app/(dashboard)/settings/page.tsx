@@ -2,9 +2,9 @@
 
 export const runtime = "edge"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/components/auth-context"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,13 +12,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, User, Bell, Shield, Save, Eye, EyeOff } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 export default function SettingsPage() {
   const { user } = useAuth()
+  const { toast } = useToast()
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
+  const [savingNotifs, setSavingNotifs] = useState(false)
+  const [notifsLoading, setNotifsLoading] = useState(true)
+  const [savingPassword, setSavingPassword] = useState(false)
 
   const [profileForm, setProfileForm] = useState({
     name: user?.name ?? "",
@@ -31,12 +36,34 @@ export default function SettingsPage() {
     confirm: "",
   })
 
-  const [notifications, setNotifications] = useState({
-    newMembers: true,
+  const [notifPrefs, setNotifPrefs] = useState({
+    memberJoined: true,
     projectUpdates: true,
+    taskAssigned: true,
     communityReplies: true,
+    applicationUpdates: true,
     systemAlerts: false,
   })
+
+  // Load notification preferences
+  useEffect(() => {
+    fetch("/api/bff/notifications/preferences")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data) {
+          setNotifPrefs({
+            memberJoined: data.memberJoined ?? true,
+            projectUpdates: data.projectUpdates ?? true,
+            taskAssigned: data.taskAssigned ?? true,
+            communityReplies: data.communityReplies ?? true,
+            applicationUpdates: data.applicationUpdates ?? true,
+            systemAlerts: data.systemAlerts ?? false,
+          })
+        }
+      })
+      .catch(() => {})
+      .finally(() => setNotifsLoading(false))
+  }, [])
 
   const initials = user?.name?.split(" ").map((n) => n[0]).join("") ?? "?"
 
@@ -144,36 +171,68 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="title-section">Notification Preferences</CardTitle>
+              <CardDescription>Choose which events create notifications for you.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {[
-                { key: "newMembers", label: "New member joins", desc: "When someone joins your organization" },
-                { key: "projectUpdates", label: "Project updates", desc: "Changes to projects you're part of" },
-                { key: "communityReplies", label: "Community replies", desc: "Replies to your posts" },
-                { key: "systemAlerts", label: "System alerts", desc: "Platform announcements and updates" },
-              ].map(({ key, label, desc }) => (
-                <div key={key} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{label}</p>
-                    <p className="text-xs text-gray-500">{desc}</p>
-                  </div>
-                  <button
-                    onClick={() => setNotifications((n) => ({ ...n, [key]: !n[key as keyof typeof n] }))}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      notifications[key as keyof typeof notifications] ? "bg-blue-600" : "bg-gray-200"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        notifications[key as keyof typeof notifications] ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
+              {notifsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                 </div>
-              ))}
-              <Button className="btn-primary mt-2">
-                <Save className="h-4 w-4 mr-2" /> Save Preferences
-              </Button>
+              ) : (
+                <>
+                  {([
+                    { key: "memberJoined", label: "New member joins", desc: "When someone joins your organisation" },
+                    { key: "projectUpdates", label: "Project updates", desc: "Changes to projects you're part of" },
+                    { key: "taskAssigned", label: "Task assigned", desc: "When a task is assigned to you" },
+                    { key: "communityReplies", label: "Community replies", desc: "Replies to your posts" },
+                    { key: "applicationUpdates", label: "Application updates", desc: "Updates on project applications" },
+                    { key: "systemAlerts", label: "System alerts", desc: "Platform announcements and updates" },
+                  ] as { key: keyof typeof notifPrefs; label: string; desc: string }[]).map(({ key, label, desc }) => (
+                    <div key={key} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{label}</p>
+                        <p className="text-xs text-gray-500">{desc}</p>
+                      </div>
+                      <button
+                        onClick={() => setNotifPrefs((p) => ({ ...p, [key]: !p[key] }))}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          notifPrefs[key] ? "bg-blue-600" : "bg-gray-200"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            notifPrefs[key] ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  ))}
+                  <Button
+                    className="btn-primary mt-2"
+                    disabled={savingNotifs}
+                    onClick={async () => {
+                      setSavingNotifs(true)
+                      try {
+                        const res = await fetch("/api/bff/notifications/preferences", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify(notifPrefs),
+                        })
+                        if (res.ok) {
+                          toast({ title: "Preferences saved", description: "Your notification settings have been updated." })
+                        } else {
+                          toast({ title: "Error", description: "Failed to save preferences", variant: "destructive" })
+                        }
+                      } finally {
+                        setSavingNotifs(false)
+                      }
+                    }}
+                  >
+                    {savingNotifs ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                    Save Preferences
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -238,9 +297,29 @@ export default function SettingsPage() {
               )}
               <Button
                 className="btn-primary"
-                disabled={!passwordForm.current || !passwordForm.next || passwordForm.next !== passwordForm.confirm}
+                disabled={savingPassword || !passwordForm.current || !passwordForm.next || passwordForm.next !== passwordForm.confirm}
+                onClick={async () => {
+                  setSavingPassword(true)
+                  try {
+                    const res = await fetch(`/api/bff/users/${user?.id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ currentPassword: passwordForm.current, password: passwordForm.next }),
+                    })
+                    if (res.ok) {
+                      toast({ title: "Password updated", description: "Your password has been changed." })
+                      setPasswordForm({ current: "", next: "", confirm: "" })
+                    } else {
+                      const data = await res.json()
+                      toast({ title: "Error", description: data.error || "Failed to update password", variant: "destructive" })
+                    }
+                  } finally {
+                    setSavingPassword(false)
+                  }
+                }}
               >
-                <Save className="h-4 w-4 mr-2" /> Update Password
+                {savingPassword ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Update Password
               </Button>
             </CardContent>
           </Card>

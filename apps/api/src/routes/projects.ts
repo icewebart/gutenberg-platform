@@ -6,6 +6,7 @@ import { createProjectSchema, updateProjectSchema } from "@gutenberg/shared"
 import Stripe from "stripe"
 import bcrypt from "bcryptjs"
 import { sendApplicationApprovedEmail, sendApplicationRejectedEmail } from "../lib/email"
+import { createNotification } from "./notifications"
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY
@@ -163,6 +164,29 @@ router.post("/:id/join", requireAuth, async (req: AuthRequest, res) => {
       .update(projects)
       .set({ currentParticipants: project.currentParticipants + 1, updatedAt: new Date() })
       .where(eq(projects.id, req.params.id))
+
+    // Notify the joining user
+    createNotification({
+      userId: req.user!.id,
+      organizationId: project.organizationId,
+      type: "project_assigned",
+      title: "You joined a project",
+      message: `You are now a member of "${project.title}".`,
+      link: `/projects/${project.id}`,
+    })
+
+    // Notify project manager if they exist
+    if (project.projectManagerId && project.projectManagerId !== req.user!.id) {
+      const joiner = await db.query.users.findFirst({ where: eq(users.id, req.user!.id) })
+      createNotification({
+        userId: project.projectManagerId,
+        organizationId: project.organizationId,
+        type: "member_joined",
+        title: "New member joined your project",
+        message: `${joiner?.name ?? "Someone"} joined "${project.title}".`,
+        link: `/projects/${project.id}`,
+      })
+    }
 
     res.status(201).json({ message: "Joined project" })
   } catch (err) {
@@ -532,12 +556,34 @@ router.patch("/:id/applications/:appId", requireAuth, requireRole("admin", "boar
         sendApplicationApprovedEmail(updated.email, name, project.title, updated.tempPassword, webUrl)
           .catch((err) => console.error("[email] Failed to send approval email:", err))
       }
+      // In-app notification for approved user
+      if (updated.userId && project) {
+        createNotification({
+          userId: updated.userId,
+          organizationId: project.organizationId,
+          type: "application_approved",
+          title: "Application approved! 🎉",
+          message: `Your application for "${project.title}" has been approved.`,
+          link: `/projects/${project.id}`,
+        })
+      }
     }
 
     if (status === "rejected" && project) {
       const name = `${updated.firstName} ${updated.lastName}`.trim()
       sendApplicationRejectedEmail(updated.email, name, project.title)
         .catch((err) => console.error("[email] Failed to send rejection email:", err))
+      // In-app notification for rejected user
+      if (updated.userId) {
+        createNotification({
+          userId: updated.userId,
+          organizationId: project.organizationId,
+          type: "application_rejected",
+          title: "Application update",
+          message: `Your application for "${project.title}" was not accepted at this time.`,
+          link: `/projects`,
+        })
+      }
     }
 
     res.json(updated)

@@ -63,6 +63,14 @@ const config: Config = {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
+        brand: {
+          purple: 'var(--brand-purple)',
+          'purple-dark': 'var(--brand-purple-dark)',
+          'purple-light': 'var(--brand-purple-light)',
+          blue: 'var(--brand-blue)',
+          'blue-dark': 'var(--brand-blue-dark)',
+          'blue-light': 'var(--brand-blue-light)',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

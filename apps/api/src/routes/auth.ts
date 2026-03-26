@@ -6,7 +6,7 @@ import { db, users, organizations } from "../db"
 import { signToken } from "../lib/jwt"
 import { loginSchema, registerSchema } from "@gutenberg/shared"
 import { requireAuth, type AuthRequest } from "../middleware/auth"
-import { sendVerificationEmail } from "../lib/email"
+import { sendVerificationEmail, sendPasswordResetEmail } from "../lib/email"
 
 const router = Router()
 
@@ -151,6 +151,69 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
     }
     const { passwordHash: _, ...safeUser } = user
     res.json(safeUser)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: "Internal server error" })
+  }
+})
+
+// POST /auth/forgot-password
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body as { email?: string }
+    if (!email) {
+      res.status(400).json({ error: "email is required" })
+      return
+    }
+
+    const user = await db.query.users.findFirst({ where: eq(users.email, email.toLowerCase().trim()) })
+    // Always return success to prevent email enumeration
+    if (user) {
+      const token = randomUUID()
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+      await db.update(users)
+        .set({ passwordResetToken: token, passwordResetExpiresAt: expiresAt })
+        .where(eq(users.id, user.id))
+      const webUrl = process.env.WEB_URL ?? "http://localhost:3000"
+      sendPasswordResetEmail(user.email, user.name, token, webUrl)
+        .catch((err) => console.error("[email] Failed to send password reset email:", err))
+    }
+
+    res.json({ success: true })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: "Internal server error" })
+  }
+})
+
+// POST /auth/reset-password
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body as { token?: string; password?: string }
+    if (!token || !password) {
+      res.status(400).json({ error: "token and password are required" })
+      return
+    }
+    if (password.length < 8) {
+      res.status(400).json({ error: "Password must be at least 8 characters" })
+      return
+    }
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.passwordResetToken, token),
+    })
+
+    if (!user || !user.passwordResetExpiresAt || new Date() > new Date(user.passwordResetExpiresAt)) {
+      res.status(400).json({ error: "This reset link is invalid or has expired" })
+      return
+    }
+
+    const hash = await bcrypt.hash(password, 12)
+    await db.update(users)
+      .set({ passwordHash: hash, passwordResetToken: null, passwordResetExpiresAt: null, updatedAt: new Date() })
+      .where(eq(users.id, user.id))
+
+    res.json({ success: true, message: "Password updated successfully" })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: "Internal server error" })

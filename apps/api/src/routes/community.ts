@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm"
 import { db, communityPosts, communityReplies } from "../db"
 import { requireAuth, type AuthRequest } from "../middleware/auth"
 import { createPostSchema, createReplySchema } from "@gutenberg/shared"
+import { createNotification } from "./notifications"
 
 const router = Router()
 
@@ -67,6 +68,22 @@ router.post("/posts/:id/replies", requireAuth, async (req: AuthRequest, res) => 
       .insert(communityReplies)
       .values({ ...data, postId: req.params.id, authorId: req.user!.id })
       .returning()
+
+    // Notify the post author if different from replier
+    const post = await db.query.communityPosts.findFirst({
+      where: eq(communityPosts.id, req.params.id),
+    })
+    if (post && post.authorId !== req.user!.id) {
+      createNotification({
+        userId: post.authorId,
+        organizationId: post.organizationId,
+        type: "community_reply",
+        title: "Someone replied to your post",
+        message: `New reply on "${post.title}".`,
+        link: `/community`,
+      })
+    }
+
     res.status(201).json(reply)
   } catch (err: any) {
     if (err.name === "ZodError") {

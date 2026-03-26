@@ -2,6 +2,7 @@ import { Router } from "express"
 import { eq, and } from "drizzle-orm"
 import { db, tasks, users } from "../db"
 import { requireAuth, requireRole, type AuthRequest } from "../middleware/auth"
+import { createNotification } from "./notifications"
 
 const router = Router()
 
@@ -93,6 +94,18 @@ router.post("/", requireAuth, async (req: AuthRequest, res) => {
       })
       .returning()
 
+    // Notify assignee (if different from creator)
+    if (assignedTo && assignedTo !== req.user!.id) {
+      createNotification({
+        userId: assignedTo,
+        organizationId,
+        type: "task_assigned",
+        title: "New task assigned to you",
+        message: `"${title}" has been assigned to you.`,
+        link: "/tasks",
+      })
+    }
+
     res.status(201).json(task)
   } catch (err) {
     console.error(err)
@@ -177,6 +190,16 @@ router.patch("/:id/complete", requireAuth, async (req: AuthRequest, res) => {
           .where(eq(tasks.id, req.params.id))
 
         updated.pointsAwarded = true
+
+        // Notify the assignee that they earned points
+        createNotification({
+          userId: task.assignedTo,
+          organizationId: task.organizationId,
+          type: "task_completed",
+          title: "Task completed — points awarded! 🏆",
+          message: `You earned ${task.points} points for completing "${task.title}".`,
+          link: "/tasks",
+        })
       }
     }
 

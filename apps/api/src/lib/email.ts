@@ -1,6 +1,7 @@
 import { Resend } from "resend"
+import { BRAND } from "./branding"
 
-const FROM = process.env.FROM_EMAIL ?? "Gutenberg Platform <noreply@verein.gutenberg.ro>"
+const FROM = process.env.FROM_EMAIL ?? `${BRAND.name} <noreply@verein.gutenberg.ro>`
 
 function getResend(): Resend {
   const key = process.env.RESEND_API_KEY
@@ -24,8 +25,8 @@ function layout(title: string, body: string): string {
       <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
 
         <!-- Header -->
-        <tr><td style="background:linear-gradient(135deg,#7c3aed,#6d28d9);border-radius:12px 12px 0 0;padding:32px 40px;text-align:center;">
-          <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">Gutenberg Platform</h1>
+        <tr><td style="background:linear-gradient(135deg,${BRAND.primaryColor},${BRAND.primaryDark});border-radius:12px 12px 0 0;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">${BRAND.name}</h1>
         </td></tr>
 
         <!-- Body -->
@@ -33,7 +34,7 @@ function layout(title: string, body: string): string {
           ${body}
           <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0;" />
           <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;">
-            You received this email from Gutenberg Platform.<br/>
+            You received this email from ${BRAND.name}.<br/>
             If you didn't expect this, you can safely ignore it.
           </p>
         </td></tr>
@@ -46,7 +47,7 @@ function layout(title: string, body: string): string {
 }
 
 function btn(href: string, label: string): string {
-  return `<a href="${href}" style="display:inline-block;background:#7c3aed;color:#fff;font-size:15px;font-weight:600;text-decoration:none;padding:13px 28px;border-radius:8px;margin:24px 0;">${label}</a>`
+  return `<a href="${href}" style="display:inline-block;background:${BRAND.primaryColor};color:#fff;font-size:15px;font-weight:600;text-decoration:none;padding:13px 28px;border-radius:8px;margin:24px 0;">${label}</a>`
 }
 
 // ─── Send: Email Verification ─────────────────────────────────────────────────
@@ -61,15 +62,15 @@ export async function sendVerificationEmail(
   const html = layout("Confirm your email", `
     <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Hi ${name}, welcome! 👋</h2>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;line-height:1.6;">
-      Thanks for joining Gutenberg Platform. Please confirm your email address to activate your account.
+      Thanks for joining ${BRAND.name}. Please confirm your email address to activate your account.
     </p>
     <div style="text-align:center;">${btn(link, "Confirm Email Address")}</div>
     <p style="margin:24px 0 0;font-size:13px;color:#9ca3af;text-align:center;">
       This link expires in 24 hours.<br/>
-      Or copy this URL: <a href="${link}" style="color:#7c3aed;">${link}</a>
+      Or copy this URL: <a href="${link}" style="color:${BRAND.primaryColor};">${link}</a>
     </p>
   `)
-  await getResend().emails.send({ from: FROM, to: email, subject: "Confirm your email — Gutenberg Platform", html })
+  await getResend().emails.send({ from: FROM, to: email, subject: `Confirm your email — ${BRAND.name}`, html })
 }
 
 // ─── Send: Invitation ─────────────────────────────────────────────────────────
@@ -87,12 +88,12 @@ export async function sendInvitationEmail(
   const html = layout("You've been invited", `
     <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">You've been invited to join ${orgName}</h2>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;line-height:1.6;">
-      <strong>${inviterName}</strong> has invited you to join <strong>${orgName}</strong> as a <strong>${roleLabel}</strong> on Gutenberg Platform.
+      <strong>${inviterName}</strong> has invited you to join <strong>${orgName}</strong> as a <strong>${roleLabel}</strong> on ${BRAND.name}.
     </p>
     <div style="text-align:center;">${btn(link, "Accept Invitation")}</div>
     <p style="margin:24px 0 0;font-size:13px;color:#9ca3af;text-align:center;">
       This invitation expires in 7 days.<br/>
-      Or copy this URL: <a href="${link}" style="color:#7c3aed;">${link}</a>
+      Or copy this URL: <a href="${link}" style="color:${BRAND.primaryColor};">${link}</a>
     </p>
   `)
   await getResend().emails.send({ from: FROM, to: email, subject: `${inviterName} invited you to ${orgName}`, html })
@@ -111,7 +112,7 @@ export async function sendApplicationApprovedEmail(
     <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Great news, ${name}! 🎉</h2>
     <p style="margin:0 0 24px;font-size:15px;color:#6b7280;line-height:1.6;">
       Your application for <strong>${projectTitle}</strong> has been <strong style="color:#059669;">approved</strong>.
-      We've created an account for you on Gutenberg Platform.
+      We've created an account for you on ${BRAND.name}.
     </p>
     <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin:0 0 24px;">
       <p style="margin:0 0 8px;font-size:13px;color:#6b7280;">Your login credentials:</p>
@@ -122,6 +123,29 @@ export async function sendApplicationApprovedEmail(
     <p style="margin:24px 0 0;font-size:13px;color:#9ca3af;text-align:center;">Please change your password after your first login.</p>
   `)
   await getResend().emails.send({ from: FROM, to: email, subject: `Your application for ${projectTitle} was approved!`, html })
+}
+
+// ─── Send: Password Reset ──────────────────────────────────────────────────────
+
+export async function sendPasswordResetEmail(
+  email: string,
+  name: string,
+  token: string,
+  webUrl: string
+) {
+  const link = `${webUrl}/reset-password?token=${token}`
+  const html = layout("Reset your password", `
+    <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Hi ${name},</h2>
+    <p style="margin:0 0 24px;font-size:15px;color:#6b7280;line-height:1.6;">
+      You requested a password reset for your ${BRAND.name} account. Click the button below to choose a new password.
+    </p>
+    <div style="text-align:center;">${btn(link, "Reset Password")}</div>
+    <p style="margin:24px 0 0;font-size:13px;color:#9ca3af;text-align:center;">
+      This link expires in 1 hour.<br/>
+      If you didn't request this, you can safely ignore this email.
+    </p>
+  `)
+  await getResend().emails.send({ from: FROM, to: email, subject: `Reset your password — ${BRAND.name}`, html })
 }
 
 // ─── Send: Application Rejected ───────────────────────────────────────────────
