@@ -36,7 +36,6 @@ import {
   Tag,
   CheckSquare,
   Square,
-  GripVertical,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getAvatarGradient } from "@/lib/avatar-gradient"
@@ -540,19 +539,14 @@ function TaskDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); setEditing(false) } }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-start justify-between gap-3 z-10">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0 flex flex-col">
+        {/* Header — full width */}
+        <div className="flex items-start justify-between gap-3 px-6 py-4 border-b shrink-0">
           <div className="flex-1 min-w-0">
             {editing ? (
-              <Input
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                className="text-base font-semibold rounded-xl"
-                placeholder="Task title"
-              />
+              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-base font-semibold rounded-xl" placeholder="Task title" />
             ) : (
-              <h2 className={cn("text-base font-semibold leading-snug", task.status === "done" && "line-through text-gray-400")}>
+              <h2 className={cn("text-lg font-semibold leading-snug", task.status === "done" && "line-through text-gray-400")}>
                 {task.title}
               </h2>
             )}
@@ -569,21 +563,69 @@ function TaskDetailModal({
           </div>
         </div>
 
-        <div className="px-6 py-5 space-y-5">
-          {/* Status + Priority row */}
-          <div className="flex flex-wrap items-center gap-2">
-            {editing ? (
-              <>
+        {/* 2-column body */}
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+
+          {/* ── LEFT column: description, subtasks, comments ── */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 border-r">
+
+            {/* Description */}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-gray-500 uppercase tracking-wide">Description</Label>
+              {editing ? (
+                <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="rounded-xl text-sm min-h-[100px]" placeholder="Add a description..." />
+              ) : (
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap min-h-[40px]">
+                  {task.description || <span className="text-gray-400 italic">No description</span>}
+                </p>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Subtasks */}
+            <SubtaskChecklist
+              subtasks={Array.isArray(task.subtasks) ? task.subtasks : []}
+              onToggle={handleSubtaskToggle}
+              onAdd={handleSubtaskAdd}
+              onDelete={handleSubtaskDelete}
+              canManage={canManage}
+            />
+
+            <Separator />
+
+            {/* Comments */}
+            <CommentsSection taskId={task.id} currentUserId={user?.id ?? ""} canManage={canManage} />
+          </div>
+
+          {/* ── RIGHT column: all metadata ── */}
+          <div className="w-72 shrink-0 overflow-y-auto px-5 py-5 space-y-4 bg-gray-50/50">
+
+            {/* Status */}
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-gray-400 uppercase tracking-wide">Status</Label>
+              {editing ? (
                 <Select value={editStatus} onValueChange={(v) => setEditStatus(v as Status)}>
-                  <SelectTrigger className="w-36 rounded-xl h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="rounded-xl h-8 text-xs w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todo">To Do</SelectItem>
                     <SelectItem value="in_progress">In Progress</SelectItem>
                     <SelectItem value="done">Done</SelectItem>
                   </SelectContent>
                 </Select>
+              ) : (
+                <Badge variant="outline" className={cn("text-xs border w-fit", STATUS_STYLES[task.status])}>
+                  {STATUS_COLUMNS.find((c) => c.id === task.status)?.label ?? task.status}
+                </Badge>
+              )}
+            </div>
+
+            {/* Priority */}
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-gray-400 uppercase tracking-wide">Priority</Label>
+              {editing ? (
                 <Select value={editPriority} onValueChange={(v) => setEditPriority(v as Priority)}>
-                  <SelectTrigger className="w-32 rounded-xl h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="rounded-xl h-8 text-xs w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">🟢 Low</SelectItem>
                     <SelectItem value="medium">🟡 Medium</SelectItem>
@@ -591,216 +633,151 @@ function TaskDetailModal({
                     <SelectItem value="urgent">🟣 Urgent</SelectItem>
                   </SelectContent>
                 </Select>
-              </>
-            ) : (
-              <>
-                <Badge variant="outline" className={cn("text-xs border", STATUS_STYLES[task.status])}>
-                  {STATUS_COLUMNS.find((c) => c.id === task.status)?.label ?? task.status}
+              ) : (
+                <Badge variant="outline" className={cn("text-xs border w-fit", priorityCfg.color)}>
+                  <Flag className="h-3 w-3 mr-1" />{priorityCfg.label}
                 </Badge>
-                <Badge variant="outline" className={cn("text-xs border", priorityCfg.color)}>
-                  <Flag className="h-3 w-3 mr-1" />
-                  {priorityCfg.label}
-                </Badge>
-                {timeline && (
-                  <Badge variant="outline" className={cn("text-xs border", timeline.color)}>
-                    <Clock className="h-3 w-3 mr-1" />
-                    {timeline.label}
-                  </Badge>
-                )}
-                {task.points > 0 && (
-                  <Badge variant="outline" className="text-xs border text-yellow-600 bg-yellow-50 border-yellow-200">
-                    <Award className="h-3 w-3 mr-1" />
-                    {task.points} pts{task.pointsAwarded && " ✓"}
-                  </Badge>
-                )}
-              </>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* Labels */}
-          <div className="space-y-1.5">
-            <span className="text-xs font-medium text-gray-500 flex items-center gap-1"><Tag className="h-3 w-3" /> Labels</span>
-            {editing ? (
-              <LabelsPicker labels={editLabels} onChange={setEditLabels} />
-            ) : (
-              <div className="flex flex-wrap gap-1">
-                {(task.labels ?? []).length === 0 ? (
-                  <span className="text-xs text-gray-400">No labels</span>
-                ) : (
-                  (task.labels ?? []).map((l) => (
-                    <span key={l} className={cn("px-2 py-0.5 rounded-full text-xs font-medium", getLabelColor(l))}>{l}</span>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Meta fields */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
             {/* Assignee */}
-            <div className="space-y-1">
-              <Label className="text-xs text-gray-500 flex items-center gap-1"><User className="h-3 w-3" /> Assignee</Label>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-gray-400 uppercase tracking-wide flex items-center gap-1"><User className="h-3 w-3" /> Assignee</Label>
               {editing ? (
                 <Select value={editAssignedTo} onValueChange={setEditAssignedTo}>
-                  <SelectTrigger className="rounded-xl h-8 text-xs"><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                  <SelectTrigger className="rounded-xl h-8 text-xs w-full"><SelectValue placeholder="Unassigned" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Unassigned</SelectItem>
-                    {members.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>{displayName(m)}</SelectItem>
-                    ))}
+                    {members.map((m) => <SelectItem key={m.id} value={m.id}>{displayName(m)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               ) : assigneeMember ? (
                 <div className="flex items-center gap-2">
                   <Avatar className="h-6 w-6">
-                    {assigneeMember.avatar ? (
-                      <AvatarImage src={assigneeMember.avatar} />
-                    ) : (
+                    {assigneeMember.avatar ? <AvatarImage src={assigneeMember.avatar} /> : (
                       <AvatarFallback className={cn("text-[10px] text-white", getAvatarGradient(displayName(assigneeMember)))}>
                         {initials(assigneeMember)}
                       </AvatarFallback>
                     )}
                   </Avatar>
-                  <span className="text-sm">{displayName(assigneeMember)}</span>
+                  <span className="text-sm text-gray-700">{displayName(assigneeMember)}</span>
                 </div>
-              ) : (
-                <span className="text-gray-400 text-sm">Unassigned</span>
-              )}
+              ) : <span className="text-sm text-gray-400">Unassigned</span>}
             </div>
 
             {/* Due Date */}
-            <div className="space-y-1">
-              <Label className="text-xs text-gray-500 flex items-center gap-1"><Clock className="h-3 w-3" /> Due Date</Label>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-gray-400 uppercase tracking-wide flex items-center gap-1"><Clock className="h-3 w-3" /> Due Date</Label>
               {editing ? (
                 <Input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} className="rounded-xl h-8 text-xs" />
               ) : (
-                <span className="text-sm text-gray-700">
-                  {task.deadline ? new Date(task.deadline).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}
-                </span>
+                <div className="space-y-1">
+                  <span className="text-sm text-gray-700">
+                    {task.deadline ? new Date(task.deadline).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                  </span>
+                  {timeline && (
+                    <Badge variant="outline" className={cn("text-xs border block w-fit", timeline.color)}>
+                      {timeline.label}
+                    </Badge>
+                  )}
+                </div>
               )}
             </div>
 
             {/* Project */}
-            <div className="space-y-1">
-              <Label className="text-xs text-gray-500 flex items-center gap-1"><FolderOpen className="h-3 w-3" /> Project</Label>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-gray-400 uppercase tracking-wide flex items-center gap-1"><FolderOpen className="h-3 w-3" /> Project</Label>
               {editing ? (
                 <Select value={editProjectId} onValueChange={setEditProjectId}>
-                  <SelectTrigger className="rounded-xl h-8 text-xs"><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectTrigger className="rounded-xl h-8 text-xs w-full"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    {projects.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
-                    ))}
+                    {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
                   </SelectContent>
                 </Select>
               ) : linkedProject ? (
                 <Link href="/projects" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
-                  <FolderOpen className="h-3 w-3" />
-                  {linkedProject.title}
+                  <FolderOpen className="h-3 w-3" />{linkedProject.title}
                 </Link>
-              ) : (
-                <span className="text-gray-400 text-sm">—</span>
-              )}
+              ) : <span className="text-sm text-gray-400">—</span>}
             </div>
 
             {/* Points */}
-            <div className="space-y-1">
-              <Label className="text-xs text-gray-500 flex items-center gap-1"><Award className="h-3 w-3" /> Points</Label>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-gray-400 uppercase tracking-wide flex items-center gap-1"><Award className="h-3 w-3" /> Points</Label>
               {editing ? (
                 <Input type="number" min="0" value={editPoints} onChange={(e) => setEditPoints(e.target.value)} className="rounded-xl h-8 text-xs" />
               ) : (
-                <span className="text-sm text-gray-700">{task.points > 0 ? `${task.points} pts` : "—"}</span>
+                <span className="text-sm text-gray-700">
+                  {task.points > 0 ? `${task.points} pts${task.pointsAwarded ? " ✓" : ""}` : "—"}
+                </span>
               )}
             </div>
-          </div>
 
-          {/* Description */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-gray-500">Description</Label>
+            {/* Labels */}
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-gray-400 uppercase tracking-wide flex items-center gap-1"><Tag className="h-3 w-3" /> Labels</Label>
+              {editing ? (
+                <LabelsPicker labels={editLabels} onChange={setEditLabels} />
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {(Array.isArray(task.labels) ? task.labels : []).length === 0 ? (
+                    <span className="text-sm text-gray-400">—</span>
+                  ) : (
+                    (Array.isArray(task.labels) ? task.labels : []).map((l) => (
+                      <span key={l} className={cn("px-2 py-0.5 rounded-full text-xs font-medium", getLabelColor(l))}>{l}</span>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Dates */}
+            <div className="text-xs text-gray-400 space-y-0.5">
+              <p>Created {createdDate}</p>
+              {completedDate && <p className="text-green-600">✓ Completed {completedDate}</p>}
+            </div>
+
+            <Separator />
+
+            {/* Action buttons */}
             {editing ? (
-              <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="rounded-xl text-sm min-h-[80px]" placeholder="Task description..." />
+              <div className="space-y-2">
+                <Button onClick={handleSave} disabled={saving} className="rounded-xl w-full">
+                  {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Save Changes
+                </Button>
+                <Button variant="outline" onClick={() => setEditing(false)} className="rounded-xl w-full">Cancel</Button>
+              </div>
             ) : (
-              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                {task.description || <span className="text-gray-400">No description</span>}
-              </p>
+              <div className="space-y-2">
+                {task.status !== "done" && canManage && (
+                  <Button onClick={() => onComplete(task.id)} className="rounded-xl w-full bg-green-600 hover:bg-green-700 text-white">
+                    <CheckCheck className="h-4 w-4 mr-2" />Mark Complete
+                  </Button>
+                )}
+                {task.status === "todo" && canManage && (
+                  <Button variant="outline" onClick={() => onStatusChange(task.id, "in_progress")} className="rounded-xl w-full">
+                    Start Task
+                  </Button>
+                )}
+                {canManage && (
+                  confirmDelete ? (
+                    <div className="flex gap-2">
+                      <Button variant="destructive" size="sm" onClick={() => { onDelete(task.id); onClose() }} className="rounded-xl flex-1 h-8">Delete</Button>
+                      <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} className="rounded-xl flex-1 h-8">Cancel</Button>
+                    </div>
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)} className="rounded-xl w-full text-red-500 hover:text-red-700 hover:bg-red-50">
+                      <Trash2 className="h-4 w-4 mr-2" />Delete Task
+                    </Button>
+                  )
+                )}
+              </div>
             )}
           </div>
-
-          {/* Edit actions */}
-          {editing && (
-            <div className="space-y-2">
-              <Label className="text-xs text-gray-500">Labels</Label>
-              <LabelsPicker labels={editLabels} onChange={setEditLabels} />
-            </div>
-          )}
-
-          <Separator />
-
-          {/* Subtasks */}
-          <SubtaskChecklist
-            subtasks={task.subtasks ?? []}
-            onToggle={handleSubtaskToggle}
-            onAdd={handleSubtaskAdd}
-            onDelete={handleSubtaskDelete}
-            canManage={canManage}
-          />
-
-          <Separator />
-
-          {/* Comments */}
-          <CommentsSection
-            taskId={task.id}
-            currentUserId={user?.id ?? ""}
-            canManage={canManage}
-          />
-
-          <Separator />
-
-          {/* Footer meta */}
-          <div className="text-xs text-gray-400 space-y-0.5">
-            <p>Created {createdDate}</p>
-            {completedDate && <p className="text-green-600">✓ Completed {completedDate}</p>}
-          </div>
-
-          {/* Action buttons */}
-          {editing ? (
-            <div className="flex gap-2 pt-1">
-              <Button onClick={handleSave} disabled={saving} className="rounded-xl flex-1">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Save Changes
-              </Button>
-              <Button variant="outline" onClick={() => setEditing(false)} className="rounded-xl">Cancel</Button>
-            </div>
-          ) : (
-            <div className="flex gap-2 pt-1 flex-wrap">
-              {task.status !== "done" && canManage && (
-                <Button onClick={() => onComplete(task.id)} className="rounded-xl bg-green-600 hover:bg-green-700 text-white">
-                  <CheckCheck className="h-4 w-4 mr-2" />
-                  Mark Complete
-                </Button>
-              )}
-              {task.status !== "done" && canManage && task.status === "todo" && (
-                <Button variant="outline" onClick={() => onStatusChange(task.id, "in_progress")} className="rounded-xl">
-                  Start Task
-                </Button>
-              )}
-              {canManage && (
-                confirmDelete ? (
-                  <div className="flex gap-2 items-center ml-auto">
-                    <span className="text-xs text-red-600">Sure?</span>
-                    <Button variant="destructive" size="sm" onClick={() => { onDelete(task.id); onClose() }} className="rounded-xl h-8">Delete</Button>
-                    <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} className="rounded-xl h-8">Cancel</Button>
-                  </div>
-                ) : (
-                  <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)} className="rounded-xl text-red-500 hover:text-red-700 hover:bg-red-50 ml-auto">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )
-              )}
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -814,12 +791,18 @@ function SortableTaskCard({ task, members, onClick }: { task: Task; members: Mem
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1 }
 
   return (
-    <div ref={setNodeRef} style={style} className={cn("group relative bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-pointer", isDragging && "shadow-lg")}>
-      {/* Drag handle */}
-      <div {...attributes} {...listeners} className="absolute left-2 top-3 opacity-0 group-hover:opacity-40 hover:!opacity-80 cursor-grab active:cursor-grabbing p-1 rounded touch-none">
-        <GripVertical className="h-3 w-3 text-gray-400" />
-      </div>
-      <div onClick={onClick} className="p-3 pl-7">
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={onClick}
+      className={cn(
+        "bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing select-none",
+        isDragging && "shadow-lg ring-2 ring-blue-300"
+      )}
+    >
+      <div className="p-3">
         <TaskCardContent task={task} members={members} />
       </div>
     </div>
