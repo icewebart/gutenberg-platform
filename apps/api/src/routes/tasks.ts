@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { eq, and } from "drizzle-orm"
+import { eq, and, asc } from "drizzle-orm"
 import { db, tasks, users, taskComments } from "../db"
 import { requireAuth, requireRole, type AuthRequest } from "../middleware/auth"
 
@@ -178,15 +178,16 @@ router.delete("/:id", requireAuth, requireRole("admin", "board_member"), async (
 // GET /tasks/:id/comments
 router.get("/:id/comments", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const comments = await db.query.taskComments.findMany({
-      where: eq(taskComments.taskId, req.params.id),
-      orderBy: (c, { asc }) => [asc(c.createdAt)],
-    })
+    const comments = await db
+      .select()
+      .from(taskComments)
+      .where(eq(taskComments.taskId, req.params.id))
+      .orderBy(asc(taskComments.createdAt))
 
     // Enrich with user info
     const enriched = await Promise.all(
       comments.map(async (comment) => {
-        const u = await db.query.users.findFirst({ where: eq(users.id, comment.userId) })
+        const [u] = await db.select().from(users).where(eq(users.id, comment.userId))
         return {
           ...comment,
           user: u ? { id: u.id, name: u.name, firstName: u.firstName, lastName: u.lastName, avatar: u.avatar } : null,
@@ -229,7 +230,7 @@ router.post("/:id/comments", requireAuth, async (req: AuthRequest, res) => {
 // DELETE /tasks/:id/comments/:commentId
 router.delete("/:id/comments/:commentId", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const comment = await db.query.taskComments.findFirst({ where: eq(taskComments.id, req.params.commentId) })
+    const [comment] = await db.select().from(taskComments).where(eq(taskComments.id, req.params.commentId))
     if (!comment) { res.status(404).json({ error: "Comment not found" }); return }
 
     // Only the author or admin/board_member can delete

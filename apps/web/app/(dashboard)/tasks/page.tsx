@@ -277,8 +277,8 @@ function CommentsSection({
     setLoading(true)
     fetch(`/api/bff/tasks/${taskId}/comments`)
       .then((r) => r.json())
-      .then(setComments)
-      .catch(() => {})
+      .then((data) => setComments(Array.isArray(data) ? data : []))
+      .catch(() => setComments([]))
       .finally(() => setLoading(false))
   }, [taskId])
 
@@ -827,21 +827,23 @@ function SortableTaskCard({ task, members, onClick }: { task: Task; members: Mem
 }
 
 function TaskCardContent({ task, members }: { task: Task; members: Member[] }) {
-  const priorityCfg = PRIORITY_CONFIG[task.priority]
+  const priorityCfg = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.medium
   const timeline = getTimelineInfo(task.deadline)
   const assigneeMember = members.find((m) => m.id === task.assignedTo) ?? task.assignee
-  const subtasksDone = (task.subtasks ?? []).filter((s) => s.done).length
-  const subtasksTotal = (task.subtasks ?? []).length
+  const labels = Array.isArray(task.labels) ? task.labels : []
+  const subtasks = Array.isArray(task.subtasks) ? task.subtasks : []
+  const subtasksDone = subtasks.filter((s) => s.done).length
+  const subtasksTotal = subtasks.length
 
   return (
     <div className="space-y-2">
       {/* Labels */}
-      {(task.labels ?? []).length > 0 && (
+      {labels.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {(task.labels ?? []).slice(0, 3).map((l) => (
+          {labels.slice(0, 3).map((l) => (
             <span key={l} className={cn("px-1.5 py-0.5 rounded-full text-[10px] font-medium", getLabelColor(l))}>{l}</span>
           ))}
-          {(task.labels ?? []).length > 3 && <span className="text-[10px] text-gray-400">+{(task.labels ?? []).length - 3}</span>}
+          {labels.length > 3 && <span className="text-[10px] text-gray-400">+{labels.length - 3}</span>}
         </div>
       )}
 
@@ -889,6 +891,7 @@ function TaskCardContent({ task, members }: { task: Task; members: Member[] }) {
             <CheckSquare className="h-2.5 w-2.5" />{subtasksDone}/{subtasksTotal}
           </span>
         )}
+
       </div>
     </div>
   )
