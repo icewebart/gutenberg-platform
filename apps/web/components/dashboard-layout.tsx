@@ -78,7 +78,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/community", label: "Community", icon: MessageSquare, permission: "view_community" },
           { href: "/learning", label: "Learning Center", icon: GraduationCap, permission: "view_learning_center" },
           { href: "/store", label: "Store", icon: Store, permission: "view_store" },
-          { href: "/chat", label: "Chat", icon: MessageCircle, permission: null },
         ]
 
       case "participant":
@@ -98,7 +97,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/community", label: "Community", icon: MessageSquare, permission: "view_community" },
           { href: "/learning", label: "Learning Center", icon: GraduationCap, permission: "view_learning_center" },
           { href: "/store", label: "Store", icon: Store, permission: "view_store" },
-          { href: "/chat", label: "Chat", icon: MessageCircle, permission: null },
         ]
 
       case "admin":
@@ -111,7 +109,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           { href: "/community", label: "Community", icon: MessageSquare, permission: "*" },
           { href: "/learning", label: "Learning Center", icon: GraduationCap, permission: "*" },
           { href: "/store", label: "Store", icon: Store, permission: "*" },
-          { href: "/chat", label: "Chat", icon: MessageCircle, permission: "*" },
         ]
 
       default:

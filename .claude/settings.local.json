@@ -40,7 +40,8 @@
       "Bash(grep -l \"project_applications\\\\|STRIPE\" /Users/mark/gutenberg-platform/apps/api/drizzle/*.sql)",
       "Bash(grep -n \"domain\\\\|Domain\" /Users/mark/gutenberg-platform/apps/web/app/\\\\\\(dashboard\\\\\\)/organizations/[id]/page.tsx)",
       "Bash(grep -n \"Globe\" /Users/mark/gutenberg-platform/apps/web/app/\\\\\\(dashboard\\\\\\)/organizations/[id]/page.tsx)",
-      "Bash(pnpm --filter api add resend)"
+      "Bash(pnpm --filter api add resend)",
+      "Bash(grep -r \"DATABASE_URL\" /Users/mark/gutenberg-platform/apps/api/.env*)"
     ]
   }
 }
