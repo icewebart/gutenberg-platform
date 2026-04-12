@@ -231,7 +231,7 @@ export const tasks = pgTable("tasks", {
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
   status: text("status").notNull().default("todo"), // todo | in_progress | done
-  priority: text("priority").notNull().default("medium"), // low | medium | high
+  priority: text("priority").notNull().default("medium"), // low | medium | high | urgent
   deadline: timestamp("deadline"),
   points: integer("points").notNull().default(0),
   assignedTo: uuid("assigned_to").references(() => users.id, { onDelete: "set null" }),
@@ -239,8 +239,25 @@ export const tasks = pgTable("tasks", {
     .notNull()
     .references(() => users.id),
   projectId: uuid("project_id").references(() => projects.id, { onDelete: "set null" }),
+  labels: text("labels").array().notNull().default([]),
+  subtasks: jsonb("subtasks").notNull().default([]),
   completedAt: timestamp("completed_at"),
   pointsAwarded: boolean("points_awarded").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+})
+
+// ─── Task Comments ────────────────────────────────────────────────────────────
+
+export const taskComments = pgTable("task_comments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  taskId: uuid("task_id")
+    .notNull()
+    .references(() => tasks.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 })
