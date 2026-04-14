@@ -67,13 +67,13 @@ router.post("/posts", requireAuth, async (req: AuthRequest, res) => {
     if (role !== "admin" && role !== "board_member") {
       res.status(403).json({ error: "Only admins and board members can post" }); return
     }
-    const { organizationId, title, content, category } = req.body
+    const { organizationId, title, content, category, imageUrl } = req.body
     if (!organizationId || !title || !content) {
       res.status(400).json({ error: "organizationId, title and content are required" }); return
     }
     const [post] = await db
       .insert(communityPosts)
-      .values({ organizationId, title, content, category: category ?? "general", tags: [], authorId: req.user!.id })
+      .values({ organizationId, title, content, category: category ?? "general", tags: [], authorId: req.user!.id, imageUrl: imageUrl ?? null })
       .returning()
     res.status(201).json(await enrichWithAuthor(post))
   } catch (err) {

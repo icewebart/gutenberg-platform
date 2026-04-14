@@ -2,7 +2,7 @@
 
 export const runtime = "edge"
 
-import { useEffect, useState, useRef, useCallback } from "react"
+import React, { useEffect, useState, useRef, useCallback } from "react"
 import { useAuth } from "@/components/auth-context"
 import { useMultiTenant } from "@/components/multi-tenant-context"
 import { Button } from "@/components/ui/button"
@@ -16,14 +16,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils"
 import { getAvatarGradient } from "@/lib/avatar-gradient"
 import {
-  MessageSquare, Send, Plus, Loader2, Heart, ChevronDown, ChevronUp,
-  Trash2, Users, Search, ArrowLeft,
+  MessageSquare, Send, Plus, Loader2, Heart, Trash2, Users, Search, ArrowLeft, ImageIcon,
 } from "lucide-react"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface Author { id: string; name: string; firstName?: string; lastName?: string; avatar?: string; role?: string }
 interface Reply { id: string; postId: string; authorId: string; content: string; createdAt: string; author: Author | null }
-interface Post { id: string; organizationId: string; authorId: string; title: string; content: string; category: string; likes: number; replyCount: number; createdAt: string; author: Author | null; replies?: Reply[] }
+interface Post {
+  id: string; organizationId: string; authorId: string; title: string; content: string;
+  category: string; likes: number; replyCount: number; createdAt: string;
+  author: Author | null; replies?: Reply[]; imageUrl?: string | null
+}
 interface Member { id: string; name: string; firstName?: string; lastName?: string; avatar?: string }
 interface MessageSender { id: string; name: string; firstName?: string; lastName?: string; avatar?: string }
 interface Message { id: string; conversationId: string; senderId: string; content: string; createdAt: string; sender: MessageSender | null }
@@ -47,15 +50,182 @@ function timeAgo(dateStr: string): string {
   if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`
   return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
 }
-function UserAvatar({ user, size = "md" }: { user: any; size?: "sm" | "md" }) {
-  const sz = size === "sm" ? "h-7 w-7" : "h-9 w-9"
-  const tsz = size === "sm" ? "text-[10px]" : "text-xs"
+function UserAvatar({ user, size = "md" }: { user: any; size?: "sm" | "md" | "lg" }) {
+  const sz = size === "sm" ? "h-7 w-7" : size === "lg" ? "h-11 w-11" : "h-9 w-9"
+  const tsz = size === "sm" ? "text-[10px]" : size === "lg" ? "text-sm" : "text-xs"
   return (
     <Avatar className={cn(sz, "shrink-0")}>
       {user?.avatar ? <AvatarImage src={user.avatar} /> : (
-        <AvatarFallback className={cn(tsz, "text-white", getAvatarGradient(displayName(user)))}>{initials(user)}</AvatarFallback>
+        <AvatarFallback className={cn(tsz, "text-white", `bg-gradient-to-br ${getAvatarGradient(displayName(user))}`)}>{initials(user)}</AvatarFallback>
       )}
     </Avatar>
+  )
+}
+
+// Render message with @mention highlighting
+function MentionText({ content, isMe }: { content: string; isMe: boolean }) {
+  const parts = content.split(/(@\S+)/g)
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.startsWith("@") ? (
+          <span key={i} className={cn("font-semibold", isMe ? "text-blue-200" : "text-blue-600")}>{part}</span>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  )
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  general: "bg-blue-50 text-blue-700",
+  announcement: "bg-purple-50 text-purple-700",
+  event: "bg-green-50 text-green-700",
+  update: "bg-orange-50 text-orange-700",
+}
+
+// ─── Post Detail Modal ──────────────────────────────────────────────────────────
+function PostDetailModal({
+  post, currentUser, onClose, onReplyAdded, onLike,
+}: {
+  post: Post | null
+  currentUser: any
+  onClose: () => void
+  onReplyAdded: (postId: string) => void
+  onLike: (postId: string) => void
+}) {
+  const [replies, setReplies] = useState<Reply[]>([])
+  const [loading, setLoading] = useState(false)
+  const [replyContent, setReplyContent] = useState("")
+  const [posting, setPosting] = useState(false)
+  const repliesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!post) return
+    setReplies([])
+    setLoading(true)
+    fetch(`/api/bff/community/posts/${post.id}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.replies) setReplies(data.replies) })
+      .finally(() => setLoading(false))
+  }, [post?.id])
+
+  useEffect(() => {
+    repliesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [replies])
+
+  const handleReply = async () => {
+    if (!post || !replyContent.trim() || posting) return
+    setPosting(true)
+    try {
+      const res = await fetch(`/api/bff/community/posts/${post.id}/replies`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: replyContent.trim() }),
+      })
+      if (res.ok) {
+        const reply = await res.json()
+        setReplies((prev) => [...prev, reply])
+        setReplyContent("")
+        onReplyAdded(post.id)
+      }
+    } finally { setPosting(false) }
+  }
+
+  if (!post) return null
+
+  return (
+    <Dialog open={!!post} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        {/* Image */}
+        {post.imageUrl && (
+          <div className="relative w-full shrink-0" style={{ maxHeight: 320 }}>
+            <img src={post.imageUrl} alt={post.title} className="w-full object-cover" style={{ maxHeight: 320 }} />
+          </div>
+        )}
+
+        {/* Post header */}
+        <div className="px-6 pt-5 pb-4 border-b shrink-0">
+          <div className="flex items-start gap-3">
+            <UserAvatar user={post.author} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="text-sm font-semibold text-gray-900">{displayName(post.author)}</span>
+                {post.author?.role && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">
+                    {post.author.role.replace("_", " ")}
+                  </Badge>
+                )}
+                <span className="text-xs text-gray-400">{timeAgo(post.createdAt)}</span>
+                {post.category && (
+                  <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium capitalize", CATEGORY_COLORS[post.category] ?? "bg-gray-100 text-gray-600")}>
+                    {post.category}
+                  </span>
+                )}
+              </div>
+              <h2 className="text-lg font-bold text-gray-900">{post.title}</h2>
+              <p className="text-sm text-gray-700 mt-2 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 mt-3 pl-12">
+            <button
+              onClick={() => onLike(post.id)}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-500 transition-colors"
+            >
+              <Heart className="h-3.5 w-3.5" /> {post.likes}
+            </button>
+            <span className="text-xs text-gray-400">
+              {replies.length} {replies.length === 1 ? "reply" : "replies"}
+            </span>
+          </div>
+        </div>
+
+        {/* Replies list */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 min-h-0">
+          {loading ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
+          ) : replies.length === 0 ? (
+            <p className="text-xs text-gray-400 text-center py-8">No replies yet. Be the first!</p>
+          ) : (
+            replies.map((reply) => (
+              <div key={reply.id} className="flex gap-3">
+                <UserAvatar user={reply.author} size="sm" />
+                <div className="flex-1 min-w-0 bg-gray-50 rounded-xl px-3 py-2">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-xs font-semibold text-gray-800">{displayName(reply.author)}</span>
+                    <span className="text-[10px] text-gray-400">{timeAgo(reply.createdAt)}</span>
+                  </div>
+                  <p className="text-sm text-gray-700 leading-relaxed">{reply.content}</p>
+                </div>
+              </div>
+            ))
+          )}
+          <div ref={repliesEndRef} />
+        </div>
+
+        {/* Reply input */}
+        <div className="px-6 py-4 border-t bg-white shrink-0 flex gap-2 items-center">
+          <UserAvatar user={currentUser} size="sm" />
+          <div className="flex-1 flex gap-2">
+            <Input
+              placeholder="Write a reply..."
+              value={replyContent}
+              onChange={(e) => setReplyContent(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleReply()}
+              className="flex-1 h-9 text-sm rounded-xl"
+            />
+            <Button
+              size="sm"
+              onClick={handleReply}
+              disabled={posting || !replyContent.trim()}
+              className="h-9 px-3 rounded-xl"
+            >
+              {posting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -63,15 +233,12 @@ function UserAvatar({ user, size = "md" }: { user: any; size?: "sm" | "md" }) {
 function FeedTab({ orgId, currentUser, canPost }: { orgId: string; currentUser: any; canPost: boolean }) {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
-  const [expandedPost, setExpandedPost] = useState<string | null>(null)
-  const [postDetail, setPostDetail] = useState<Post | null>(null)
-  const [loadingDetail, setLoadingDetail] = useState(false)
-  const [replyContent, setReplyContent] = useState<Record<string, string>>({})
-  const [postingReply, setPostingReply] = useState<string | null>(null)
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const [newPostOpen, setNewPostOpen] = useState(false)
   const [newTitle, setNewTitle] = useState("")
   const [newContent, setNewContent] = useState("")
   const [newCategory, setNewCategory] = useState("general")
+  const [newImageUrl, setNewImageUrl] = useState("")
   const [creating, setCreating] = useState(false)
 
   const fetchPosts = useCallback(async () => {
@@ -84,41 +251,16 @@ function FeedTab({ orgId, currentUser, canPost }: { orgId: string; currentUser: 
 
   useEffect(() => { fetchPosts() }, [fetchPosts])
 
-  const loadPostDetail = async (postId: string) => {
-    if (expandedPost === postId) { setExpandedPost(null); setPostDetail(null); return }
-    setExpandedPost(postId); setLoadingDetail(true)
-    try {
-      const res = await fetch(`/api/bff/community/posts/${postId}`)
-      if (res.ok) setPostDetail(await res.json())
-    } finally { setLoadingDetail(false) }
-  }
-
   const handleLike = async (postId: string) => {
     await fetch(`/api/bff/community/posts/${postId}/like`, { method: "POST" })
     setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, likes: p.likes + 1 } : p))
-  }
-
-  const handleReply = async (postId: string) => {
-    const content = replyContent[postId]?.trim()
-    if (!content || postingReply === postId) return
-    setPostingReply(postId)
-    try {
-      const res = await fetch(`/api/bff/community/posts/${postId}/replies`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content }),
-      })
-      if (res.ok) {
-        const reply = await res.json()
-        setPostDetail((prev) => prev ? { ...prev, replies: [...(prev.replies ?? []), reply] } : prev)
-        setReplyContent((prev) => ({ ...prev, [postId]: "" }))
-        setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, replyCount: p.replyCount + 1 } : p))
-      }
-    } finally { setPostingReply(null) }
+    setSelectedPost((prev) => prev?.id === postId ? { ...prev, likes: prev.likes + 1 } : prev)
   }
 
   const handleDelete = async (postId: string) => {
     await fetch(`/api/bff/community/posts/${postId}`, { method: "DELETE" })
     setPosts((prev) => prev.filter((p) => p.id !== postId))
-    if (expandedPost === postId) { setExpandedPost(null); setPostDetail(null) }
+    if (selectedPost?.id === postId) setSelectedPost(null)
   }
 
   const handleCreate = async () => {
@@ -127,120 +269,120 @@ function FeedTab({ orgId, currentUser, canPost }: { orgId: string; currentUser: 
     try {
       const res = await fetch("/api/bff/community/posts", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ organizationId: orgId, title: newTitle.trim(), content: newContent.trim(), category: newCategory }),
+        body: JSON.stringify({
+          organizationId: orgId,
+          title: newTitle.trim(),
+          content: newContent.trim(),
+          category: newCategory,
+          imageUrl: newImageUrl.trim() || undefined,
+        }),
       })
       if (res.ok) {
         const post = await res.json()
         setPosts((prev) => [post, ...prev])
-        setNewPostOpen(false); setNewTitle(""); setNewContent(""); setNewCategory("general")
+        setNewPostOpen(false)
+        setNewTitle(""); setNewContent(""); setNewCategory("general"); setNewImageUrl("")
       }
     } finally { setCreating(false) }
-  }
-
-  const CATEGORY_COLORS: Record<string, string> = {
-    general: "bg-blue-50 text-blue-700", announcement: "bg-purple-50 text-purple-700",
-    event: "bg-green-50 text-green-700", update: "bg-orange-50 text-orange-700",
   }
 
   if (loading) return <div className="flex items-center justify-center py-24"><Loader2 className="h-7 w-7 animate-spin text-gray-400" /></div>
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">{posts.length} post{posts.length !== 1 ? "s" : ""}</p>
-        {canPost && (
-          <Button onClick={() => setNewPostOpen(true)} className="rounded-xl h-9">
-            <Plus className="h-4 w-4 mr-1.5" /> New Post
-          </Button>
-        )}
-      </div>
-
-      {posts.length === 0 && (
-        <div className="text-center py-20 text-gray-400">
-          <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No posts yet</p>
+    <>
+      <div className="max-w-3xl mx-auto space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-500">{posts.length} post{posts.length !== 1 ? "s" : ""}</p>
+          {canPost && (
+            <Button onClick={() => setNewPostOpen(true)} className="rounded-xl h-9">
+              <Plus className="h-4 w-4 mr-1.5" /> New Post
+            </Button>
+          )}
         </div>
-      )}
 
-      {posts.map((post) => {
-        const isExpanded = expandedPost === post.id
-        const canDelete = post.authorId === currentUser?.id || currentUser?.role === "admin" || currentUser?.role === "board_member"
-        return (
-          <div key={post.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-5 pt-5 pb-4">
-              <div className="flex items-start gap-3">
-                <UserAvatar user={post.author} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-gray-900">{displayName(post.author)}</span>
-                    {post.author?.role && <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">{post.author.role.replace("_", " ")}</Badge>}
-                    <span className="text-xs text-gray-400">{timeAgo(post.createdAt)}</span>
-                    {post.category && <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium capitalize", CATEGORY_COLORS[post.category] ?? "bg-gray-100 text-gray-600")}>{post.category}</span>}
-                  </div>
-                  <h3 className="text-base font-semibold text-gray-900 mt-1">{post.title}</h3>
-                  <p className="text-sm text-gray-700 mt-1 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+        {posts.length === 0 && (
+          <div className="text-center py-20 text-gray-400">
+            <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm">No posts yet</p>
+          </div>
+        )}
+
+        {posts.map((post) => {
+          const canDelete = post.authorId === currentUser?.id || currentUser?.role === "admin" || currentUser?.role === "board_member"
+          return (
+            <div
+              key={post.id}
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => setSelectedPost(post)}
+            >
+              {/* Image */}
+              {post.imageUrl && (
+                <div className="w-full aspect-video bg-gray-100">
+                  <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
                 </div>
-                {canDelete && (
-                  <button onClick={() => handleDelete(post.id)} className="text-gray-300 hover:text-red-500 transition-colors shrink-0 p-1">
-                    <Trash2 className="h-3.5 w-3.5" />
+              )}
+
+              <div className="px-5 pt-4 pb-4">
+                <div className="flex items-start gap-3">
+                  <UserAvatar user={post.author} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-gray-900">{displayName(post.author)}</span>
+                      {post.author?.role && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">
+                          {post.author.role.replace("_", " ")}
+                        </Badge>
+                      )}
+                      <span className="text-xs text-gray-400">{timeAgo(post.createdAt)}</span>
+                      {post.category && (
+                        <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium capitalize", CATEGORY_COLORS[post.category] ?? "bg-gray-100 text-gray-600")}>
+                          {post.category}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-base font-semibold text-gray-900 mt-1">{post.title}</h3>
+                    <p className="text-sm text-gray-700 mt-1 leading-relaxed line-clamp-3 whitespace-pre-wrap">{post.content}</p>
+                  </div>
+                  {canDelete && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(post.id) }}
+                      className="text-gray-300 hover:text-red-500 transition-colors shrink-0 p-1"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-4 mt-3 pl-12" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => handleLike(post.id)}
+                    className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-500 transition-colors"
+                  >
+                    <Heart className="h-3.5 w-3.5" /> {post.likes}
                   </button>
-                )}
-              </div>
-              <div className="flex items-center gap-4 mt-4 pl-12">
-                <button onClick={() => handleLike(post.id)} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-red-500 transition-colors">
-                  <Heart className="h-3.5 w-3.5" /> {post.likes}
-                </button>
-                <button onClick={() => loadPostDetail(post.id)} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 transition-colors">
-                  <MessageSquare className="h-3.5 w-3.5" /> {post.replyCount} {post.replyCount === 1 ? "reply" : "replies"}
-                  {isExpanded ? <ChevronUp className="h-3 w-3 ml-0.5" /> : <ChevronDown className="h-3 w-3 ml-0.5" />}
-                </button>
+                  <button
+                    onClick={() => setSelectedPost(post)}
+                    className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 transition-colors"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    {post.replyCount} {post.replyCount === 1 ? "reply" : "replies"}
+                  </button>
+                </div>
               </div>
             </div>
+          )
+        })}
+      </div>
 
-            {isExpanded && (
-              <div className="border-t bg-gray-50/50 px-5 py-4 space-y-4">
-                {loadingDetail ? (
-                  <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>
-                ) : (
-                  <>
-                    {(postDetail?.id === post.id ? postDetail.replies ?? [] : []).map((reply) => (
-                      <div key={reply.id} className="flex gap-3">
-                        <UserAvatar user={reply.author} size="sm" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-gray-800">{displayName(reply.author)}</span>
-                            <span className="text-[10px] text-gray-400">{timeAgo(reply.createdAt)}</span>
-                          </div>
-                          <p className="text-sm text-gray-700 mt-0.5 leading-relaxed">{reply.content}</p>
-                        </div>
-                      </div>
-                    ))}
-                    {(postDetail?.id === post.id ? postDetail.replies ?? [] : []).length === 0 && (
-                      <p className="text-xs text-gray-400 text-center py-2">No replies yet</p>
-                    )}
-                    <div className="flex gap-2 pt-1">
-                      <UserAvatar user={currentUser} size="sm" />
-                      <div className="flex-1 flex gap-2">
-                        <Input
-                          placeholder="Write a reply..."
-                          value={replyContent[post.id] ?? ""}
-                          onChange={(e) => setReplyContent((prev) => ({ ...prev, [post.id]: e.target.value }))}
-                          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleReply(post.id)}
-                          className="flex-1 h-8 text-sm rounded-xl"
-                        />
-                        <Button size="sm" onClick={() => handleReply(post.id)} disabled={postingReply === post.id || !replyContent[post.id]?.trim()} className="h-8 px-3 rounded-xl">
-                          {postingReply === post.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                        </Button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )
-      })}
+      {/* Post detail modal */}
+      <PostDetailModal
+        post={selectedPost}
+        currentUser={currentUser}
+        onClose={() => setSelectedPost(null)}
+        onReplyAdded={(postId) => setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, replyCount: p.replyCount + 1 } : p))}
+        onLike={handleLike}
+      />
 
+      {/* New post dialog */}
       <Dialog open={newPostOpen} onOpenChange={setNewPostOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>New Post</DialogTitle></DialogHeader>
@@ -252,6 +394,17 @@ function FeedTab({ orgId, currentUser, canPost }: { orgId: string; currentUser: 
             <div className="space-y-1.5">
               <Label>Content</Label>
               <Textarea value={newContent} onChange={(e) => setNewContent(e.target.value)} placeholder="What do you want to share?" className="rounded-xl min-h-[120px]" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5">
+                <ImageIcon className="h-3.5 w-3.5 text-gray-400" /> Image URL <span className="text-gray-400 font-normal">(optional)</span>
+              </Label>
+              <Input value={newImageUrl} onChange={(e) => setNewImageUrl(e.target.value)} placeholder="https://..." className="rounded-xl" />
+              {newImageUrl && (
+                <div className="rounded-xl overflow-hidden border border-gray-200 aspect-video bg-gray-50">
+                  <img src={newImageUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
+                </div>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Category</Label>
@@ -272,7 +425,7 @@ function FeedTab({ orgId, currentUser, canPost }: { orgId: string; currentUser: 
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }
 
@@ -290,6 +443,11 @@ function MessagesTab({ currentUser }: { currentUser: any }) {
   const [search, setSearch] = useState("")
   const [newMsgOpen, setNewMsgOpen] = useState(false)
   const [memberSearch, setMemberSearch] = useState("")
+
+  // @mention state
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null)
+  const [mentionStart, setMentionStart] = useState(-1)
+  const messageInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const orgId = currentOrganization?.id
 
@@ -369,6 +527,39 @@ function MessagesTab({ currentUser }: { currentUser: any }) {
     } finally { setSending(false) }
   }
 
+  // @mention detection
+  const handleMessageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    const cursor = e.target.selectionStart ?? val.length
+    setNewMessage(val)
+    // Look for @word pattern just before cursor
+    const before = val.slice(0, cursor)
+    const match = before.match(/@(\w*)$/)
+    if (match) {
+      setMentionQuery(match[1].toLowerCase())
+      setMentionStart(match.index!)
+    } else {
+      setMentionQuery(null)
+      setMentionStart(-1)
+    }
+  }
+
+  const insertMention = (member: Member) => {
+    const name = displayName(member)
+    const before = newMessage.slice(0, mentionStart)
+    const afterOffset = mentionStart + 1 + (mentionQuery?.length ?? 0)
+    const after = newMessage.slice(afterOffset)
+    const updated = `${before}@${name}${after.startsWith(" ") ? after : " " + after}`
+    setNewMessage(updated)
+    setMentionQuery(null)
+    setMentionStart(-1)
+    messageInputRef.current?.focus()
+  }
+
+  const mentionMembers = mentionQuery !== null
+    ? members.filter((m) => m.id !== currentUser?.id && displayName(m).toLowerCase().includes(mentionQuery))
+    : []
+
   const filteredConvs = conversations.filter((c) => {
     if (!search) return true
     return displayName(c.others[0]).toLowerCase().includes(search.toLowerCase())
@@ -384,6 +575,7 @@ function MessagesTab({ currentUser }: { currentUser: any }) {
 
   return (
     <div className="flex h-[calc(100vh-220px)] bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      {/* Sidebar */}
       <div className={cn("flex flex-col border-r", activeConv ? "hidden md:flex w-72 shrink-0" : "flex-1 md:w-72 md:flex-none md:shrink-0")}>
         <div className="p-3 border-b space-y-2">
           <div className="flex items-center justify-between">
@@ -428,6 +620,7 @@ function MessagesTab({ currentUser }: { currentUser: any }) {
         </div>
       </div>
 
+      {/* Thread */}
       {activeConv ? (
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex items-center gap-3 px-4 py-3 border-b bg-white">
@@ -435,7 +628,10 @@ function MessagesTab({ currentUser }: { currentUser: any }) {
               <ArrowLeft className="h-4 w-4" />
             </button>
             <UserAvatar user={activeConv.others[0]} size="sm" />
-            <span className="text-sm font-semibold text-gray-800">{displayName(activeConv.others[0])}</span>
+            <div>
+              <span className="text-sm font-semibold text-gray-800">{displayName(activeConv.others[0])}</span>
+              <p className="text-[10px] text-gray-400">Direct message</p>
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             {loadingMessages ? (
@@ -452,7 +648,7 @@ function MessagesTab({ currentUser }: { currentUser: any }) {
                   {!isMe && <UserAvatar user={msg.sender} size="sm" />}
                   <div className={cn("max-w-[70%] space-y-1", isMe ? "items-end" : "items-start")}>
                     <div className={cn("px-3 py-2 rounded-2xl text-sm leading-relaxed", isMe ? "bg-blue-600 text-white rounded-br-sm" : "bg-gray-100 text-gray-800 rounded-bl-sm")}>
-                      {msg.content}
+                      <MentionText content={msg.content} isMe={isMe} />
                     </div>
                     <span className="text-[10px] text-gray-400 px-1">{timeAgo(msg.createdAt)}</span>
                   </div>
@@ -461,13 +657,44 @@ function MessagesTab({ currentUser }: { currentUser: any }) {
             })}
             <div ref={messagesEndRef} />
           </div>
-          <div className="px-4 py-3 border-t bg-white flex gap-2">
-            <Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-              placeholder="Type a message..." className="flex-1 rounded-xl h-10" />
-            <Button onClick={sendMessage} disabled={sending || !newMessage.trim()} className="h-10 px-3 rounded-xl">
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
+
+          {/* Message input with @mention */}
+          <div className="px-4 py-3 border-t bg-white">
+            {/* Mention dropdown */}
+            {mentionQuery !== null && mentionMembers.length > 0 && (
+              <div className="mb-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+                <div className="px-3 py-1.5 border-b bg-gray-50">
+                  <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Mention someone</span>
+                </div>
+                {mentionMembers.slice(0, 6).map((m) => (
+                  <button
+                    key={m.id}
+                    onMouseDown={(e) => { e.preventDefault(); insertMention(m) }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-blue-50 text-left transition-colors"
+                  >
+                    <UserAvatar user={m} size="sm" />
+                    <span className="text-sm font-medium text-gray-800">{displayName(m)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Input
+                ref={messageInputRef}
+                value={newMessage}
+                onChange={handleMessageChange}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") { setMentionQuery(null); return }
+                  if (e.key === "Enter" && !e.shiftKey && mentionQuery === null) sendMessage()
+                }}
+                placeholder="Type a message… use @ to mention"
+                className="flex-1 rounded-xl h-10"
+              />
+              <Button onClick={sendMessage} disabled={sending || !newMessage.trim()} className="h-10 px-3 rounded-xl">
+                {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-1.5 ml-1">Type @ to mention a team member</p>
           </div>
         </div>
       ) : (
@@ -477,6 +704,7 @@ function MessagesTab({ currentUser }: { currentUser: any }) {
         </div>
       )}
 
+      {/* New message dialog */}
       <Dialog open={newMsgOpen} onOpenChange={setNewMsgOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>New Message</DialogTitle></DialogHeader>
@@ -512,20 +740,29 @@ export default function CommunityPage() {
   if (!user || !orgId) return null
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Community</h1>
         <p className="text-sm text-gray-500 mt-0.5">Stay connected with your organization</p>
       </div>
       <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-1 w-fit">
-        <button onClick={() => setTab("feed")} className={cn("px-4 py-1.5 rounded-lg text-sm font-medium transition-all", tab === "feed" ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700")}>
+        <button
+          onClick={() => setTab("feed")}
+          className={cn("px-4 py-1.5 rounded-lg text-sm font-medium transition-all", tab === "feed" ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700")}
+        >
           <MessageSquare className="h-4 w-4 inline mr-1.5 -mt-0.5" /> Feed
         </button>
-        <button onClick={() => setTab("messages")} className={cn("px-4 py-1.5 rounded-lg text-sm font-medium transition-all", tab === "messages" ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700")}>
+        <button
+          onClick={() => setTab("messages")}
+          className={cn("px-4 py-1.5 rounded-lg text-sm font-medium transition-all", tab === "messages" ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700")}
+        >
           <Send className="h-4 w-4 inline mr-1.5 -mt-0.5" /> Messages
         </button>
       </div>
-      {tab === "feed" ? <FeedTab orgId={orgId} currentUser={user} canPost={canPost} /> : <MessagesTab currentUser={user} />}
+      {tab === "feed"
+        ? <FeedTab orgId={orgId} currentUser={user} canPost={canPost} />
+        : <MessagesTab currentUser={user} />
+      }
     </div>
   )
 }

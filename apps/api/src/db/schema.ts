@@ -178,6 +178,7 @@ export const communityPosts = pgTable("community_posts", {
   content: text("content").notNull(),
   category: text("category").notNull(),
   tags: jsonb("tags").notNull().default([]),
+  imageUrl: text("image_url"),
   likes: integer("likes").notNull().default(0),
   isPinned: boolean("is_pinned").notNull().default(false),
   isModerated: boolean("is_moderated").notNull().default(false),
